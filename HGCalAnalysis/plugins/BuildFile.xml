@@ -27,7 +27,7 @@
 <use name="TrackingTools/MaterialEffects"/>
 <use name="MagneticField/Engine"/>
 <use name="DataFormats/JetReco"/>
-<use name="RecoNtuples/HGCalAnalysis"/>
+<use name="UserCode/HGCalAnalysis"/>
 <use name="FastSimulation/Event"/>
 <use name="geant4core"/>
 <use name="hepmc"/>
