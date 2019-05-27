@@ -1,0 +1,12 @@
+script_name=test
+
+executable            = sub.sh
+universe	            = vanilla
+requirements          = (OpSysAndVer =?= "SLCern6")
+arguments             = $(ProcId)
+output                = output/$(script_name).$(ClusterId).$(ProcId).$(Step).out
+error                 = error/$(script_name).$(ClusterId).$(ProcId).$(Step).err
+log                   = log/$(script_name).$(ClusterId).log
+RequestCpus	            = 1
++JobFlavour = "longlunch"
+queue 90
