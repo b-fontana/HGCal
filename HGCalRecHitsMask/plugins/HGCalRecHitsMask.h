@@ -45,24 +45,46 @@ public:
 private:
   //aliases
   typedef unsigned int int_layer;
+  template<class T,class U> using umap = std::unordered_map<T,U>;
 
   //variables
   const edm::EDGetTokenT<HGCRecHitCollection> recHitsToken_;  
+  const edm::Service<TFileService> fs_;
   const HGCalGeometry* gHGCal_;
   DetId::Detector myDet_; 
   ForwardSubdetector mySubDet_;
+  const std::pair<double, double> cellFilterCuts_;
+  umap<int_layer, TFileDirectory> layersAnalysedDirs_; //one subdir per analysed layer
+  const std::vector<int_layer> layersAnalysed_;
+  umap<int_layer, umap<int, TH2F*> > histosRecHits_; //stores the position of RecHits
+  umap<int_layer, umap<int, TH2F*> > histosGeom_; //stores the underlying geometry
+  FileUtils::outData outRecHits_;
+  FileUtils::outData outGeom_;
   const int_layer lastLayerEE_ = 28;
   const int mask_ = 0;
 			  
   //variables (outputs)
-  const std::string HGCRecHitMaskedCollection_name_ = "HGCRecHitMaskedCollection";
+  const std::string CellUVCollection_name_ = "CellUVCollection";
+  typedef std::vector< std::pair<int,int> > CellUVCollection_;
+  const std::string WaferUVCollection_name_ = "WaferUVCollection";
+  typedef std::vector< std::pair<int,int> > WaferUVCollection_;
 
   //functions
   virtual void beginStream(edm::StreamID) override;
   virtual void produce(edm::Event&, const edm::EventSetup&) override;
   virtual void endStream() override;
   virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
+  //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
+  //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
+  int linearUV(int u, int v) {return v*100+u;}
+  bool cellFilter(const HGCSiliconDetId&);
   bool cellMask(const HGCSiliconDetId&) const;
+  void createHistograms();
+  void fillGeomHistograms(int_layer, int, std::pair<int,int>);
+
+  //debug
+  void perpHistogram(GlobalPoint);
 };
 
 #endif //HGCalRecHitsMask_h

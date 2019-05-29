@@ -21,15 +21,15 @@ Argparser.print_args(FLAGS)
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 ROOT.gStyle.SetOptStat(ROOT.kFALSE)
 maind = 'outpath'
-layers = [1,2]
+layers = [x for x in range(1,FLAGS.nlayers+1)]
 subd_names = ['layer'+str(layers[x]) for x in range(len(layers))]
 histo_names_rechits = [[] for _ in range(len(layers))]
 histo_names_geom = [[] for _ in range(len(layers))]
 for il,l in enumerate(layers):
-    with open('data/HistoNamesRecHitsLayer'+str(l)+'_'+str(FLAGS.mask)+'.txt') as f:
+    with open('data/HistoNamesRecHitsLayer'+str(l)+'_mask'+str(FLAGS.mask)+'.txt') as f:
         for line in f:
             histo_names_rechits[il].append(line[:-1])
-    with open('data/HistoNamesGeomLayer'+str(l)+'_'+str(FLAGS.mask)+'.txt') as f:
+    with open('data/HistoNamesGeomLayer'+str(l)+'_mask'+str(FLAGS.mask)+'.txt') as f:
         for line in f:
             histo_names_geom[il].append(line[:-1])
 if len(histo_names_rechits) != len(histo_names_geom):
@@ -52,6 +52,8 @@ for isd,sd in enumerate(subd_names):
             if uv1[0] != uv2[0] or uv1[1] != uv2[1]:
                 raise ValueError('The stored names have to match!')
             title = 'Layer #'+str(layers[isd])+'       Wafer: U='+uv1[0]+', V='+uv1[1] 
+            print(os.path.join(maind,sd,nr))
+
             h1 = myfile.Get(os.path.join(maind,sd,nr))
             plot.plotHistogram(cpos=0, ppos=0, h=h1, 
                                title='RecHits', xaxis_title='u', yaxis_title='v')

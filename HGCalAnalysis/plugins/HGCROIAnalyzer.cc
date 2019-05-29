@@ -28,8 +28,6 @@
 
 using namespace std;
 
-
-//
 HGCROIAnalyzer::HGCROIAnalyzer( const edm::ParameterSet &iConfig ) : 
   mc_( consumes<edm::HepMCProduct>(edm::InputTag("generatorSmeared")) ),
   recHitsEE_( consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCEERecHits")) ),
@@ -98,20 +96,21 @@ void HGCROIAnalyzer::analyze( const edm::Event &iEvent, const edm::EventSetup &i
   iEvent.getByToken(genParticles_, genParticlesHandle);
   for(size_t i = 0; i < genParticlesHandle->size(); ++i )  {    
     const reco::GenParticle &p = (*genParticlesHandle)[i];
-    if(p.pdgId()!=22) continue;
-    if(!p.isPromptFinalState()) continue;    
-    if(fabs(p.eta())<1.5 || fabs(p.eta())>2.9) continue;
+    if(p.p4().Pz()<0.) continue;
+    if(p.pdgId()!=22) continue; //photon
+    //if(!p.isPromptFinalState()) continue;    
+    //if(fabs(p.eta())<1.5 || fabs(p.eta())>2.9) continue;
     SlimmedROI photon(p.pt(),p.eta(),p.phi(),p.mass(),22);
     slimmedROIs_->push_back(photon);
     selGenPartIdx.push_back(i);
   }
-  if(slimmedROIs_->size()!=2) return;
+  if(slimmedROIs_->size()!=1) return;
 
-  TLorentzVector mrr(slimmedROIs_->at(0).p4()+slimmedROIs_->at(1).p4());
-  if(fabs(mrr.M()-125)>5) return;
+  //TLorentzVector mrr(slimmedROIs_->at(0).p4()+slimmedROIs_->at(1).p4());
+  //if(fabs(mrr.M()-125)>5) return;
 
   //shift ROIs in phi to create control ROIs for noise/pileup control
-  for(size_t ir=0; ir<2; ir++) {
+  for(size_t ir=0; ir<1; ir++) {
     TLorentzVector p4=slimmedROIs_->at(ir).p4();
     float dphi=2.*TMath::Pi()/6.;
     for(int iphi=1; iphi<=5; iphi++) {
@@ -120,7 +119,6 @@ void HGCROIAnalyzer::analyze( const edm::Event &iEvent, const edm::EventSetup &i
       slimmedROIs_->push_back(noise);
     }
   }
-
   //check that particles reached HGCAL
   //edm::Handle<std::vector<SimTrack>> simTracksHandle;
   //iEvent.getByToken(simTracks_, simTracksHandle);

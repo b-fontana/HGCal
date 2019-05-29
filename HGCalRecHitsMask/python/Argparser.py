@@ -17,6 +17,12 @@ def add_args(parser):
         default=0,
         help='Mask applied to the geometry.'
     )
+    parser.add_argument(
+        '--nlayers',
+        type=int,
+        default=1,
+        help='Number of layers present in the histograms.'
+    )
     return parser.parse_known_args()
 
 def print_args(flags):

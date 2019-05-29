@@ -2,9 +2,13 @@ import FWCore.ParameterSet.Config as cms
 
 import sys
 from FWCore.ParameterSet.VarParsing import VarParsing
-options = VarParsing ('standard')
-options.register('inputFiles', None,               VarParsing.multiplicity.singleton, VarParsing.varType.string, "input directory")
-options.register('outputFile', 'ROIanalysis.root', VarParsing.multiplicity.singleton, VarParsing.varType.string, "output filey")
+options = VarParsing('standard')
+options.register('inputFiles', None,               
+                 VarParsing.multiplicity.singleton, 
+                 VarParsing.varType.string, "input directory")
+options.register('outputFile', 'ROIanalysis.root', 
+                 VarParsing.multiplicity.singleton, 
+                 VarParsing.varType.string, "output filey")
 options.parseArguments()
 
 process = cms.Process("HGCROI")

@@ -3,7 +3,7 @@ import numpy as np
 from array import array
 import sys
 from collections import OrderedDict
-from RecoNtuples.HGCalAnalysis.RootTools import buildMedianProfile
+from UserCode.HGCalAnalysis.RootTools import buildMedianProfile
 
 MINGENEN=200
 MINGENETA=1.6
@@ -19,7 +19,7 @@ def getEnergiesForCalibration(data,ireg):
 
         data.GetEntry(i)
 
-        for ia in xrange(1,3):
+        for ia in xrange(1,2):
             genen=getattr(data,'genen%d'%ia)
             geneta=abs(getattr(data,'geneta%d'%ia))
             if genen<MINGENEN: continue
@@ -62,7 +62,7 @@ def calibrateSpectrum(h,title,proc,func='pol1'):
 
     return calibGr
 
-def doL0L1Calibration(url,calib,nq=6):
+def doL0L1Calibration(url,calib,nq=2):
 
     """performs the L0 (uniform eta response) and L1 (absolute scale) calibrations"""
 
@@ -121,7 +121,7 @@ def doPUCalibration(url,calib,nq=10):
     return calib
 
 
-def applyCalibrationTo(url,calib,title):
+def applyCalibrationTo(url,calib,title,ncands=2):
     
     """applies the calibration to the photons and shows the energy and H->gg mass resolutions """
     
@@ -148,25 +148,27 @@ def applyCalibrationTo(url,calib,title):
 
         #generator level photons
         genphotons=[]
-        for ia in xrange(1,3):
+        for ia in xrange(1,ncands+1):
             genen  = getattr(data,'genen%d'%ia)
             geneta = getattr(data,'geneta%d'%ia)
             genphi = getattr(data,'genphi%d'%ia)
             genphotons.append(ROOT.TLorentzVector(0,0,0,0))
             genphotons[-1].SetPtEtaPhiM(genen/ROOT.TMath.CosH(geneta),geneta,genphi,0.)
-        genh = genphotons[0]+genphotons[1]
+        genh = None
+        if ncands==2 : genh=genphotons[0]+genphotons[1]
 
         #H->gg fiducial cuts
-        if genphotons[0].Pt()<20 or  genphotons[1].Pt()<20 : continue
-        if genphotons[0].Pt()<40 and genphotons[1].Pt()<40 : continue
-        if abs(genphotons[0].Eta())<1.5 or abs(genphotons[1].Eta())<1.5 : continue
-        if abs(genphotons[0].Eta())>2.8 or abs(genphotons[1].Eta())>2.8 : continue
+        if ncands==2:
+            if genphotons[0].Pt()<20 or  genphotons[1].Pt()<20 : continue
+            if genphotons[0].Pt()<40 and genphotons[1].Pt()<40 : continue
+            if abs(genphotons[0].Eta())<1.5 or abs(genphotons[1].Eta())<1.5 : continue
+            if abs(genphotons[0].Eta())>2.8 or abs(genphotons[1].Eta())>2.8 : continue
 
         #reconstructed photons in different regions
         for ireg in xrange(1,4):
 
             photons=[]
-            for ia in xrange(1,3):
+            for ia in xrange(1,ncands+1):
                 genen    = getattr(data,'genen%d'%ia)
                 geneta   = getattr(data,'geneta%d'%ia)
                 genphi   = getattr(data,'genphi%d'%ia)
@@ -186,6 +188,7 @@ def applyCalibrationTo(url,calib,title):
                 photons.append(ROOT.TLorentzVector(0,0,0,0))
                 photons[-1].SetPtEtaPhiM(recen/ROOT.TMath.CosH(geneta),geneta,genphi,0.)
 
+            if ncands<2: continue
             h = photons[0]+photons[1]
             deltaM=h.M()/genh.M()-1
             histos['dm%d'%ireg].Fill(deltaM)
@@ -200,6 +203,7 @@ def applyCalibrationTo(url,calib,title):
     for ireg in xrange(1,4):
         for k in ['dm','den']:
             h=histos['%s%d'%(k,ireg)]
+            if h.Integral()==0.: continue
             h.Scale(1./h.Integral())
             h.Draw()
             h.GetYaxis().SetTitleOffset(0.9)
@@ -236,18 +240,21 @@ def main():
     calib['L0']={}
     calib['L1']={}
     doL0L1Calibration(url=nopuF,calib=calib)
-    applyCalibrationTo(url=nopuF,calib=calib,title='H#rightarrow#gamma#gamma (PU=0)')
+    #applyCalibrationTo(url=nopuF,calib=calib,title='H#rightarrow#gamma#gamma (PU=0)')
+    applyCalibrationTo(url=nopuF,calib=calib,title='Single #gamma (PU=0)',ncands=1)
     
-    puF=sys.argv[2]
-    puTag=sys.argv[3]
-    calib['L2']={}
-    doPUCalibration(url=puF,calib=calib)
-    applyCalibrationTo(url=puF,calib=calib,title='H#rightarrow#gamma#gamma (PU=%s)'%puTag)
+    if len(sys.argv) > 3:
+        puF=sys.argv[2]
+        puTag=sys.argv[3]
+        calib['L2']={}
+        doPUCalibration(url=puF,calib=calib)
+        applyCalibrationTo(url=puF,calib=calib,
+                           title='H#rightarrow#gamma#gamma (PU=%s)'%puTag)
 
-    #save final calibration
-    import pickle
-    with open('calib_pu%s.pck'%puTag,'w') as cachefile:
-        pickle.dump(calib,cachefile, pickle.HIGHEST_PROTOCOL)
+        #save final calibration
+        import pickle
+        with open('calib_pu%s.pck'%puTag,'w') as cachefile:
+            pickle.dump(calib,cachefile, pickle.HIGHEST_PROTOCOL)
         
 
 if __name__ == "__main__":
