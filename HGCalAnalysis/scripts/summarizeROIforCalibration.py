@@ -2,7 +2,7 @@ import ROOT
 import array
 import sys
 
-from RecoNtuples.HGCalAnalysis.ROISummary import ROISummary
+from UserCode.HGCalAnalysis.ROISummary import ROISummary
 
 
 def main(url_in=sys.argv[1],url_out=sys.argv[2]):
@@ -13,14 +13,14 @@ def main(url_in=sys.argv[1],url_out=sys.argv[2]):
     fout = ROOT.TFile(url_out, "RECREATE")
     fout.cd()
     varnames  = ['genen1','geneta1','genphi1']
-    varnames += ['genen2','geneta2','genphi2']
+    #varnames += ['genen2','geneta2','genphi2']
     for i in xrange(1,4):
-        varnames+=['en1_%d'%i,'noise1_%d'%i,'en2_%d'%i,'noise2_%d'%i]
+        varnames+=['en1_%d'%i,'noise1_%d'%i]#,'en2_%d'%i,'noise2_%d'%i]
     output_tuple = ROOT.TNtuple("data","data",":".join(varnames))
 
     #loop over events
     fIn=ROOT.TFile.Open(url_in)
-    t=fIn.Get('ana/data')
+    t=fIn.Get('an/data')
     for i in xrange(0,t.GetEntriesFast()):
 
         t.GetEntry(i)
