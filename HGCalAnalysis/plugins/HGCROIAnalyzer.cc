@@ -96,7 +96,7 @@ void HGCROIAnalyzer::analyze( const edm::Event &iEvent, const edm::EventSetup &i
   iEvent.getByToken(genParticles_, genParticlesHandle);
   for(size_t i = 0; i < genParticlesHandle->size(); ++i )  {    
     const reco::GenParticle &p = (*genParticlesHandle)[i];
-    if(p.p4().Pz()<0.) continue;
+    if(p.p4().Pz()<0.) continue; 
     if(p.pdgId()!=22) continue; //photon
     //if(!p.isPromptFinalState()) continue;    
     //if(fabs(p.eta())<1.5 || fabs(p.eta())>2.9) continue;

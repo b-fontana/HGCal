@@ -5,9 +5,9 @@ import sys
 from collections import OrderedDict
 from UserCode.HGCalAnalysis.RootTools import buildMedianProfile
 
-MINGENEN=200
-MINGENETA=1.6
-MAXGENETA=2.8
+MINGENEN=20
+MINGENETA=1.4
+MAXGENETA=3.2
 A=[ROOT.TMath.Pi()*1.3**2, ROOT.TMath.Pi()*2.6**2, ROOT.TMath.Pi()*5.3**2]
 
 def getEnergiesForCalibration(data,ireg):
@@ -62,7 +62,7 @@ def calibrateSpectrum(h,title,proc,func='pol1'):
 
     return calibGr
 
-def doL0L1Calibration(url,calib,nq=2):
+def doL0L1Calibration(url,calib,nq=6):
 
     """performs the L0 (uniform eta response) and L1 (absolute scale) calibrations"""
 
@@ -133,8 +133,8 @@ def applyCalibrationTo(url,calib,title,ncands=2):
 
     histos={}
     for ireg in xrange(1,4):
-        histos['dm%d'%ireg]  = ROOT.TH1F('dm%d'%ireg, ';#Delta m_{#gamma#gamma}/m_{#gamma#gamma};PDF',50,-0.1,0.1)
-        histos['den%d'%ireg] = ROOT.TH1F('den%d'%ireg,';#Delta E/E;PDF',50,-0.1,0.1)
+        histos['dm%d'%ireg]  = ROOT.TH1F('dm%d'%ireg, ';#Delta m_{#gamma#gamma}/m_{#gamma#gamma};PDF',50,-0.5,0.1)
+        histos['den%d'%ireg] = ROOT.TH1F('den%d'%ireg,';#Delta E/E;PDF',50,-0.5,0.1)
     for h in histos:
         histos[h].Sumw2()
         histos[h].SetLineColor(1)

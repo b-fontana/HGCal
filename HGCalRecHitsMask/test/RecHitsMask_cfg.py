@@ -11,7 +11,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D41_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D41Reco_cff')
 process.load('Configuration.StandardSequences.Services_cff')
-
+"""
 process.MessageLogger = cms.Service("MessageLogger",
                                     destinations = cms.untracked.vstring(
                                         'detailedInfo'),
@@ -20,7 +20,7 @@ process.MessageLogger = cms.Service("MessageLogger",
                                         default = cms.untracked.PSet(
                                             limit = cms.untracked.int32(-1))),
                                     debugModules = cms.untracked.vstring('*'))
-
+"""
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
 
@@ -36,8 +36,6 @@ process.source = cms.Source("PoolSource",
 
 process.prod = cms.EDProducer('HGCalRecHitsMask',
                               LayersAnalysed = cms.vuint32(1,2),
-                              lCellFilterCut = cms.double(17*1.5),
-                              hCellFilterCut = cms.double(17*1.5),
                               Mask = cms.uint32(3))
 
 process.out = cms.OutputModule("PoolOutputModule",

@@ -8,8 +8,7 @@ class RootPlotting:
         -> ncanvas: number of canvases that the instance will have
         -> npads: list number of pads per canvas, where each element in the list refers to a 
            different canvas
-        -> pcoords: list of list of the coordinates of the pads, where each sublist refers to a 
-           different canvas
+        -> pcoords: list of list of the coordinates of the pads, where each sublist refers to a different canvas
         """
         if ncanvas<=0: 
             raise ValueError('The object needs to possess at least one canvas')

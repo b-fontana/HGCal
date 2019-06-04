@@ -18,7 +18,7 @@ if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = 
     CMSSW_PATH="/CMSSW_10_6_0/src/";
     HOME_DIR="/afs/cern.ch/user/b/bfontana";
     FULL_PATH="${HOME_DIR}""${CMSSW_PATH}";
-    CONFIG_FILE="test/Analysis_cfg.py";
+    CONFIG_FILE="test/RecHitsMaskStudies_cfg.py";
 else
     echo "Use different variable names.";
     exit 0;
@@ -34,7 +34,7 @@ cd "${FULL_PATH}";
 source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
 
-cd UserCode/HGCalAnalysis/;
+cd UserCode/HGCalRecHitsMaskStudies/;
 scram b -j 8;
 
 if [ -e "${CONFIG_FILE}" ]; then
@@ -47,4 +47,3 @@ else
 fi
 
 cd "${INIT_FOLDER}";
-

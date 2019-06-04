@@ -45,7 +45,7 @@ HGCalRecHitsMaskStudies::produce(edm::Event& iEvent, const edm::EventSetup& iSet
 
     //store the data in case the RecHit was measured in one of the user's chosen layersAnalysed
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) != layersAnalysed_.end()) {
-      std::pair<int,int> cellUV(sid.cellUV());
+      std::pair<int,int> cellUV(sid.cellXY());
       std::pair<int,int> waferUV(sid.waferUV());
       int waferId = linearUV(waferUV.first, waferUV.second);
       //fill only if the histogram/wafer satisfies the cellFilter() criteria
@@ -166,6 +166,7 @@ void HGCalRecHitsMaskStudies::createHistograms() {
     HGCSiliconDetId sid(it);
     int_layer det_layer = static_cast<int_layer>(sid.layer());
     std::pair<int,int> uv = sid.waferUV();
+    int N = gHGCal_->topology().dddConstants().getUVMax(sid.type());
     int waferId = linearUV(uv.first, uv.second);
 
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) 
@@ -178,10 +179,11 @@ void HGCalRecHitsMaskStudies::createHistograms() {
 	//if histosRecHits_[layer] does not exist, it will be initialized
 	if (!histosRecHits_[det_layer].count(waferId)) { 
 	  umap<int, TH2F> h_tmp;
-	  std::string nn = std::to_string(uv.first)+","+std::to_string(uv.second)+",RecHits";
+	  std::string nn = std::to_string(uv.first)+","+std::to_string(uv.second)+","+
+	    std::to_string(N)+",RecHits";
 	  histosRecHits_[det_layer].insert(std::make_pair(waferId,
 			  layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								    25,0,24,25,0,24)));
+								    25,-30,30,25,-30,30)));
 	  FileUtils::reopen(outRecHits_, static_cast<int>(det_layer), std::ios_base::app);
 	  std::string write_str = std::to_string(uv.first)+","+std::to_string(uv.second)+",RecHits";
 	  FileUtils::write(outRecHits_, write_str);
@@ -190,10 +192,11 @@ void HGCalRecHitsMaskStudies::createHistograms() {
 	//if histosGeom_[layer] does not exist, it will be initialized
 	if (!histosGeom_[det_layer].count(waferId)) { 
 	  umap<int, TH2F> h_tmp;
-	  std::string nn = std::to_string(uv.first)+","+std::to_string(uv.second)+",Geom";
+	  std::string nn = std::to_string(uv.first)+","+std::to_string(uv.second)+","+
+	    std::to_string(N)+",RecHits";
 	  histosGeom_[det_layer].insert(std::make_pair(waferId,
-			       layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-									 25,0,24,25,0,24)));
+			 layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
+								   25,-30,30,25,-30,30)));
 	  FileUtils::reopen(outGeom_, static_cast<int>(det_layer), std::ios_base::app);
 	  std::string write_str = std::to_string(uv.first)+","+std::to_string(uv.second)+",Geom";
 	  FileUtils::write(outGeom_, write_str);
@@ -201,7 +204,7 @@ void HGCalRecHitsMaskStudies::createHistograms() {
       }
 
       //filling the geometry histograms here avoids looping through the DetIds more than once
-      std::pair<int,int> celluv = sid.cellUV();
+      std::pair<int,int> celluv = sid.cellXY();
       fillGeomHistograms(det_layer, waferId, celluv);
     }
   }
@@ -212,17 +215,6 @@ void HGCalRecHitsMaskStudies::fillGeomHistograms(int_layer layer, int wId, std::
   //if the histogram already exists
   if (histosGeom_[layer].count(wId))
     histosGeom_[layer][wId]->Fill(cUV.first, cUV.second);	
-}
-
-void HGCalRecHitsMaskStudies::perpHistogram(GlobalPoint p) {
-  static bool first_time = true;
-  static TH1D *h_perp;
-  if(first_time) {
-    TFileDirectory subdir_perp = fs_->mkdir("perpHistogram");   
-    h_perp = subdir_perp.make<TH1D>("h_perp", "h_perp", 50, 0, 200);
-  }
-  h_perp->Fill(p.perp());
-  first_time = false;
 }
 
 //define this as a plug-in

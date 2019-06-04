@@ -56,6 +56,8 @@ def main(url_in=sys.argv[1],url_out=sys.argv[2]):
                 varvals += [recP4.E(),noise]
         
         #all done
+        #print(varnames)
+        #print(varvals)
         output_tuple.Fill(array.array("f",varvals))
 
     #close file
@@ -63,7 +65,5 @@ def main(url_in=sys.argv[1],url_out=sys.argv[2]):
     output_tuple.Write()
     fout.Close()
 
-
 if __name__ == "__main__":
     main()
-            
