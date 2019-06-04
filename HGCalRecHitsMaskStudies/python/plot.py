@@ -11,8 +11,8 @@ import SystemUtils
 import Argparser
 
 def getUVFromTitle(title):
-    u, v, rest = title.split(',')
-    return u, v, rest
+    u, v, N, rest = title.split(',')
+    return u, v, N, rest
 
 parser = argparse.ArgumentParser()
 FLAGS, _ = Argparser.add_args(parser)
@@ -38,7 +38,7 @@ for _l in range(len(layers)):
     if len(histo_names_rechits[_l]) != len(histo_names_geom[_l]):
         raise ValueError('The files with the wafer codes need to have the same size!')
 
-myfile = ROOT.TFile.Open(FLAGS.root_file+".root", "READ")
+myfile = ROOT.TFile.Open(FLAGS.root_file, "READ")
 online_dir = '/eos/user/b/bfontana/www/'
 pcoords = [[[0.02,0.49,0.98,0.93],    #pad1
            [0.02,0.02,0.98,0.48]]]   #pad2
