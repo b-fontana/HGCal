@@ -25,6 +25,11 @@ F.register('mask',
            F.multiplicity.singleton,
            F.varType.int,
            "Mask to be used. Accepted values: 3, 4 or 5. Default: -1.")
+F.register('samples',
+           '',
+           F.multiplicity.singleton,
+           F.varType.int,
+           'Which samples to use. Inner, outer, or both ("all").')
 F.parseArguments()
 print("********************")
 print("Input arguments:")
@@ -61,9 +66,17 @@ from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import *
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
-#indir = "/eos/cms/store/group/dpg_hgcal/comm_hgcal/sitong/D41/photon_flatE/FlatRandomEGunProducer_sitong_20190516/RECO/" if not F.pu else "/eos/cms/store/relval/CMSSW_10_6_0/RelValPhotonGunPt8To150/GEN-SIM-RECO/PU25ns_106X_upgrade2023_realistic_v2_2023D41PU200-v1/10000/"
-indir = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_20190531/RECO/" 
-fNames = ["file:" + it for it in glob.glob(os.path.join(indir,"*.root"))][F.fidx]
+indir1 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_20190531/RECO/" #Inner radii
+indir2 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_outer_20190605/RECO/" #Outer radii
+glob1 = glob.glob(os.path.join(indir1,"*.root"))
+glob2 = glob.glob(os.path.join(indir2,"*.root"))
+if F.samples == 'all':
+    glob_tot = glob1 + glob2
+elif F.samples == 'inner':
+    glob_tot = glob1
+else F.samples == 'outer':
+    glob_tot = glob2
+fNames = ["file:" + it for it in glob_tot][F.fidx]
 
 if isinstance(fNames,list):     
     process.source = cms.Source("PoolSource",
@@ -81,9 +94,9 @@ process.prod = cms.EDProducer('HGCalRecHitsMaskStudies',
                               Mask = cms.uint32(F.mask))
 
 pu_str = "pu" if F.pu else "nopu"
+fileName = F.outdir+str(F.fidx)+"_mask"+str(F.mask)+"_"+pu_str+".root"
 process.TFileService = cms.Service("TFileService",
-                                   fileName = cms.string(F.outdir+str(F.fidx)+
-                                                         "_mask"+str(F.mask)+"_"+pu_str+".root"))
+                                   fileName = cms.string())
 process.out = cms.OutputModule("PoolOutputModule", 
                                fileName = cms.untracked.string(F.outdir+str(F.fidx)+
                                                                "_mask"+str(F.mask)+"_"+pu_str+"_out.root"))

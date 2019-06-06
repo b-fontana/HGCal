@@ -6,11 +6,7 @@ HGCalRecHitsMaskStudies::HGCalRecHitsMaskStudies(const edm::ParameterSet& iConfi
 				  iConfig.getParameter<double>("hCellFilterCut"))),
   layersAnalysed_(iConfig.getParameter<std::vector<int_layer>>("LayersAnalysed")),
   mask_(iConfig.getParameter<unsigned int>("Mask"))
-  //CellUVCollection_name_(iConfig.getParameter<std::string>("CellUVCoordinates")),
-  //WaferUVCollection_name_(iConfig.getParameter<std::string>("WaferUVCoordinates"))
 {
-  produces<CellUVCollection_>(CellUVCollection_name_);  
-  produces<CellUVCollection_>(WaferUVCollection_name_);  
 }
 
 HGCalRecHitsMaskStudies::~HGCalRecHitsMaskStudies()
@@ -25,27 +21,22 @@ HGCalRecHitsMaskStudies::~HGCalRecHitsMaskStudies()
 void
 HGCalRecHitsMaskStudies::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-  std::unique_ptr<CellUVCollection_> celluv_coords = std::make_unique<CellUVCollection_>();
-  std::unique_ptr<WaferUVCollection_> waferuv_coords = std::make_unique<WaferUVCollection_>();
-
   edm::Handle<HGCRecHitCollection> recHitsHandle;
   iEvent.getByToken(recHitsToken_, recHitsHandle);
   const auto &recHits = *recHitsHandle;
   const int size = recHitsHandle->size();
-  celluv_coords->reserve(size);
-  waferuv_coords->reserve(size);
 
   for(const auto &recHit : recHits){
     HGCSiliconDetId sid(recHit.detid());
     int_layer det_layer = static_cast<int_layer>(sid.layer());
 
-    //mask and positive side of endcap checks
-    if(cellMask(sid))// || sid.zside()==1) 
+    //mask
+    if(cellMask(sid))
       continue;
 
     //store the data in case the RecHit was measured in one of the user's chosen layersAnalysed
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) != layersAnalysed_.end()) {
-      std::pair<int,int> cellUV(sid.cellXY());
+      std::pair<int,int> cellUV(sid.cellUV());
       std::pair<int,int> waferUV(sid.waferUV());
       int waferId = linearUV(waferUV.first, waferUV.second);
       //fill only if the histogram/wafer satisfies the cellFilter() criteria
@@ -54,15 +45,6 @@ HGCalRecHitsMaskStudies::produce(edm::Event& iEvent, const edm::EventSetup& iSet
     }
   }
   FileUtils::close(outRecHits_);
-
-  //iEvent.put(std::move(celluv_coords), CellUVCollection_name);
-  //iEvent.put(std::move(waferuv_coords), WaferUVCollection_name);
-
-  /* this is an EventSetup example
-  //Read SetupData from the SetupRecord in the EventSetup
-  ESHandle<SetupData> pSetup;
-  iSetup.get<SetupRecord>().get(pSetup);
-  */
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
@@ -167,6 +149,7 @@ void HGCalRecHitsMaskStudies::createHistograms() {
     int_layer det_layer = static_cast<int_layer>(sid.layer());
     std::pair<int,int> uv = sid.waferUV();
     int N = gHGCal_->topology().dddConstants().getUVMax(sid.type());
+    int N2 = 2*N+1;
     int waferId = linearUV(uv.first, uv.second);
 
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) 
@@ -183,28 +166,28 @@ void HGCalRecHitsMaskStudies::createHistograms() {
 	    std::to_string(N)+",RecHits";
 	  histosRecHits_[det_layer].insert(std::make_pair(waferId,
 			  layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								    25,-30,30,25,-30,30)));
+								    25,0,N2,
+								    25,0,N2)));
 	  FileUtils::reopen(outRecHits_, static_cast<int>(det_layer), std::ios_base::app);
-	  std::string write_str = std::to_string(uv.first)+","+std::to_string(uv.second)+",RecHits";
-	  FileUtils::write(outRecHits_, write_str);
+	  FileUtils::write(outRecHits_, nn);
 	}
 
 	//if histosGeom_[layer] does not exist, it will be initialized
 	if (!histosGeom_[det_layer].count(waferId)) { 
 	  umap<int, TH2F> h_tmp;
 	  std::string nn = std::to_string(uv.first)+","+std::to_string(uv.second)+","+
-	    std::to_string(N)+",RecHits";
+	    std::to_string(N)+",Geom";
 	  histosGeom_[det_layer].insert(std::make_pair(waferId,
 			 layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								   25,-30,30,25,-30,30)));
+								   25,0,N2,
+								   25,0,N2)));
 	  FileUtils::reopen(outGeom_, static_cast<int>(det_layer), std::ios_base::app);
-	  std::string write_str = std::to_string(uv.first)+","+std::to_string(uv.second)+",Geom";
-	  FileUtils::write(outGeom_, write_str);
+	  FileUtils::write(outGeom_, nn);
 	}
       }
 
       //filling the geometry histograms here avoids looping through the DetIds more than once
-      std::pair<int,int> celluv = sid.cellXY();
+      std::pair<int,int> celluv = sid.cellUV();
       fillGeomHistograms(det_layer, waferId, celluv);
     }
   }
