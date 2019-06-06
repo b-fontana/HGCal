@@ -1,0 +1,12 @@
+script_name=check_mask$(MASK)
+
+executable            = sub.sh
+arguments 	      = $(Step) $(MASK) outer
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).out
+error                 = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).err
+log                   = log/$(script_name).$(ClusterId).log
+RequestCpus	      = 1
++JobFlavour = "workday"
+queue 100 MASK in (3, 4, 5)
