@@ -1,8 +1,0 @@
-<lcgdict>
-   <class name="SlimmedHit" />
-   <class name="std::vector<SlimmedHit>" />
-   <class name="edm::Wrapper<std::vector<SlimmedHit> >" />
-   <class name="SlimmedROI" />
-   <class name="std::vector<SlimmedROI>" />
-   <class name="edm::Wrapper<std::vector<SlimmedROI> >" />
- </lcgdict>
