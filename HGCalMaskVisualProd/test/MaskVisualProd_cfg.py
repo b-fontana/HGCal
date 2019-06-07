@@ -82,17 +82,15 @@ fNames = ["file:" + it for it in glob_tot][F.fidx]
 
 if isinstance(fNames,list):     
     print(fNames)
-    print("h1")
     process.source = cms.Source("PoolSource",
                         fileNames = cms.untracked.vstring(*fNames),
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 else:
     print(fNames)
-    print("h2")
     process.source = cms.Source("PoolSource",
                         fileNames = cms.untracked.vstring(fNames),
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
-raw_input()
+
 process.prod = cms.EDProducer('HGCalMaskVisualProd',
                               LayersAnalysed = cms.vuint32(1,2),
                               lCellFilterCut = cms.double(17*1.5),
@@ -100,7 +98,9 @@ process.prod = cms.EDProducer('HGCalMaskVisualProd',
                               Mask = cms.uint32(F.mask))
 
 pu_str = "pu" if F.pu else "nopu"
-outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'/'
+outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'_weight/'
+if not os.path.isdir(outsubdir):
+    outdir = F.outdir
 fileName = outsubdir+str(F.fidx)+"_mask"+str(F.mask)+"_"+F.samples+"_"+pu_str
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string(fileName+'.root'))
