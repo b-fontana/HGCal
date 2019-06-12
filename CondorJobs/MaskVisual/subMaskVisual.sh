@@ -49,4 +49,19 @@ else
     exit 0;
 fi
 
-cp *.root /eos/user/b/bfontana/HGCalMaskVisual/
+if [ -e "${CONFIG_FILE}" ]; then
+    echo "Before command";
+    cmsRun "${CONFIG_FILE}" pu=0 fidx="${1}" mask="${2}" samples="${3}"
+    echo "After command";
+else
+    echo "The configuration file was not found. End of program.";
+    exit 0;
+fi
+
+outfile="${1}_mask${2}_${3}_nopu"
+if [ -r "${outfile}.root" ]; then
+    mv "${outfile}.root" /eos/user/b/bfontana/HGCalMaskVisual/mask"${2}"_"${3}_weight"/;
+    rm "${outfile}_out.root";
+else
+    echo "File ${outfile}.root was not produced by the configuration file.";
+fi

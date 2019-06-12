@@ -10,4 +10,4 @@ error                 = out/$(script_name)_$(samples).$(ClusterId).$(ProcId).$(S
 log                   = log/$(script_name)_$(samples).$(ClusterId).log
 RequestCpus	      = 1
 +JobFlavour = "workday"
-queue 100 MASK in (3, 4, 5)
+queue 1 MASK in (3)

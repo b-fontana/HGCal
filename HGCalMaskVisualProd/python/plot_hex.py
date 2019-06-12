@@ -144,13 +144,13 @@ def convertToHex_alternative(h, N, a):
                     addBin(x, y)
                     xylist.append((x,y))
 
-    for u in range(h.GetNbinsX()-1):
-        for v in range(h.GetNbinsY()-1):
-            x, y = convertCoords(u, v)
+    for U in range(h.GetNbinsX()-1):
+        for V in range(h.GetNbinsY()-1):
+            x, y = convertCoords(U, V)
             if (x,y) in xylist:  
                 global_bin = hhex.FindBin(x, y)
-                hhex.SetBinContent(global_bin, h.GetBinContent(u, v))
-
+                print("U:{} V:{} Bin content:{} ".format(U,V,h.GetBinContent(U, V)))
+                hhex.SetBinContent(global_bin, h.GetBinContent(U, V))
     return hhex
 
 
@@ -188,16 +188,16 @@ for isd,sd in enumerate(subd_names):
             h1 = myfile.Get(os.path.join(maind,sd,nr))
             #h1 = convertToHex(h1, int(uvN1[2]))
             h1 = convertToHex_alternative(h1, int(uvN1[2]), 0.5)
-            plot.plotHistogram(cpos=0, ppos=0, h=h1, 
-                               title='RecHits', xaxis_title='X', yaxis_title='Y')
+            plot.plotHistogram(cpos=0, ppos=0, h=h1, title='RecHits', 
+                               xaxis_title='X [cm]', yaxis_title='Y [cm]')
            
             #second pad
             uvN2 = getUVFromTitle(ng)
             h2 = myfile.Get(os.path.join(maind,sd,ng))
             #h2 = convertToHex(h2, int(uvN2[2]))
             h2 = convertToHex_alternative(h2, int(uvN2[2]), 0.4474)
-            plot.plotHistogram(cpos=0, ppos=1, h=h2, 
-                               title='Geometry', xaxis_title='X', yaxis_title='Y')
+            plot.plotHistogram(cpos=0, ppos=1, h=h2, title='Geometry', 
+                               xaxis_title='X [cm]', yaxis_title='Y [cm]')
 
             #title and save
             title = 'Layer #'+str(layers[isd])+'       Wafer: U='+uvN1[0]+', V='+uvN1[1] 
@@ -205,3 +205,4 @@ for isd,sd in enumerate(subd_names):
             plot.setCanvasTitle(cpos=0, t=t)
             name = directory +'/hex_'+uvN1[0]+'_'+uvN1[1]
             plot.save(cpos=0, name=name)
+            quit()

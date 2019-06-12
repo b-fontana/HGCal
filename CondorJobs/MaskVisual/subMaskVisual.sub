@@ -1,7 +1,7 @@
 script_name=MaskVisual$(MASK)
 samples=outer
 
-executable            = sub.sh
+executable            = subMaskVisual.sh
 arguments 	      = $(Step) $(MASK) $(samples)
 universe	      = vanilla
 requirements          = (OpSysAndVer =?= "CentOS7")

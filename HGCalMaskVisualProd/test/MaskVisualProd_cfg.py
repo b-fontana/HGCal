@@ -50,16 +50,22 @@ process.load('Configuration.Geometry.GeometryExtended2023D28_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D28Reco_cff')
 process.load('Configuration.StandardSequences.Services_cff')
 process.load("FWCore.MessageLogger.MessageLogger_cfi")
+
 """
 process.MessageLogger = cms.Service("MessageLogger",
                                     destinations = cms.untracked.vstring(
-                                        'detailedInfo'),
+                                        'detailedInfo',
+                                        'cout',
+                                        'cerr'),
                                     detailedInfo = cms.untracked.PSet(
                                         threshold = cms.untracked.string('INFO'),
                                         default = cms.untracked.PSet(
                                             limit = cms.untracked.int32(-1))),
+                                    cerr = cms.untracked.PSet(
+                                        threshold = cms.untracked.string('INFO')),
                                     debugModules = cms.untracked.vstring('*'))
 """
+
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
 from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import *
@@ -98,10 +104,10 @@ process.prod = cms.EDProducer('HGCalMaskVisualProd',
                               Mask = cms.uint32(F.mask))
 
 pu_str = "pu" if F.pu else "nopu"
-outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'_weight/'
-if not os.path.isdir(outsubdir):
-    outdir = F.outdir
-fileName = outsubdir+str(F.fidx)+"_mask"+str(F.mask)+"_"+F.samples+"_"+pu_str
+#outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'_weight/'
+#f not os.path.isdir(outsubdir):
+outsubdir = F.outdir
+fileName = str(F.fidx)+"_mask"+str(F.mask)+"_"+F.samples+"_"+pu_str
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string(fileName+'.root'))
 fileName = fileName + '_out'

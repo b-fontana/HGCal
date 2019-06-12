@@ -37,7 +37,7 @@ HGCalMaskVisualProd::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
       int waferId = linearUV(waferUV.first, waferUV.second);
       //fill only if the histogram/wafer satisfies the cellFilter() criteria
       if(histosRecHits_[det_layer].count(waferId)) 
-	histosRecHits_[det_layer][waferId]->Fill(cellUV.first, cellUV.second);
+	histosRecHits_[det_layer][waferId]->Fill(cellUV.first, cellUV.second, recHit.energy());
     }
   }
   FileUtils::close(outRecHits_);
@@ -145,7 +145,7 @@ void HGCalMaskVisualProd::createHistograms() {
     int_layer det_layer = static_cast<int_layer>(sid.layer());
     std::pair<int,int> uv = sid.waferUV();
     int N = gHGCal_->topology().dddConstants().getUVMax(sid.type());
-    int N2 = 2*N+1;
+    int N2 = 2*N;
     int waferId = linearUV(uv.first, uv.second);
 
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) 
@@ -162,8 +162,8 @@ void HGCalMaskVisualProd::createHistograms() {
 	    std::to_string(N)+",RecHits";
 	  histosRecHits_[det_layer].insert(std::make_pair(waferId,
 			  layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								    25,0,N2,
-								    25,0,N2)));
+								    N2,-0.5,N2+0.5,
+								    N2,-0.5,N2+0.5)));
 	  FileUtils::reopen(outRecHits_, static_cast<int>(det_layer), std::ios_base::app);
 	  FileUtils::write(outRecHits_, nn);
 	}
@@ -175,8 +175,8 @@ void HGCalMaskVisualProd::createHistograms() {
 	    std::to_string(N)+",Geom";
 	  histosGeom_[det_layer].insert(std::make_pair(waferId,
 			 layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								   25,0,N2,
-								   25,0,N2)));
+								   N2,-0.5,N2+0.5,
+								   N2,-0.5,N2+0.5)));
 	  FileUtils::reopen(outGeom_, static_cast<int>(det_layer), std::ios_base::app);
 	  FileUtils::write(outGeom_, nn);
 	}

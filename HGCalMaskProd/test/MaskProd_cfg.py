@@ -34,7 +34,7 @@ process.source = cms.Source("PoolSource",
                             fileNames = cms.untracked.vstring('/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomPtGunProducer_PDGid22_nPart1_Pt100_Eta1p6To2p8_noPU_clange_cmssw1040pre1_20181128/RECO/partGun_PDGid22_x100_Pt100.0To100.0_RECO_12.root'),
                             duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 
-process.prod = cms.EDProducer('HGCalRecHitsMask',
+process.prod = cms.EDProducer('HGCalMaskProd',
                               LayersAnalysed = cms.vuint32(1,2),
                               Mask = cms.uint32(3))
 
