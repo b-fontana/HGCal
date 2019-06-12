@@ -1,7 +1,7 @@
 script_name=Mask$(MASK)ResolutionAna
 samples=outer
 
-executable            = sub.sh
+executable            = subMaskResolution.sh
 arguments 	      = $(Step) $(MASK) $(samples)
 universe	      = vanilla
 requirements          = (OpSysAndVer =?= "CentOS7")

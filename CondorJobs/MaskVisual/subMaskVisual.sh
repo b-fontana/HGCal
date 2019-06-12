@@ -18,7 +18,7 @@ if [ $(varExists "${INIT_FOLDER}") = true ] && [ $(varExists "${CMSSW_PATH}") = 
     CMSSW_PATH="/CMSSW_10_6_0/src/";
     HOME_DIR="/afs/cern.ch/user/b/bfontana";
     FULL_PATH="${HOME_DIR}""${CMSSW_PATH}";
-    CONFIG_FILE="test/MaskVisualProd_cfg.py";
+    CONFIG_FILE="${FULL_PATH}UserCode/HGCalMaskVisualProd/test/MaskVisualProd_cfg.py";
 else
     echo "Use different variable names.";
     exit 0;
@@ -26,7 +26,7 @@ fi
 
 export XRD_NETWORKSTACK=IPv4
 export CMSSWVER="CMSSW_10_6_0"
-export SCRAM_ARCH="slc6_amd64_gcc700"
+export SCRAM_ARCH="slc7_amd64_gcc700"
 
 echo "${FULL_PATH}";
 cd "${FULL_PATH}";
@@ -34,8 +34,11 @@ cd "${FULL_PATH}";
 source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
 
-cd UserCode/HGCalMaskVisualProd/;
-scram b -j 8;
+#back to the job folder
+cd "${INIT_FOLDER}";
+
+#cd UserCode/HGCalMaskVisualProd/;
+#scram b -j 8;
 
 if [ -e "${CONFIG_FILE}" ]; then
     echo "Before command";
@@ -46,4 +49,4 @@ else
     exit 0;
 fi
 
-cd "${INIT_FOLDER}";
+cp *.root /eos/user/b/bfontana/HGCalMaskVisual/

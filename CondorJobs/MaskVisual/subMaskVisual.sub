@@ -1,0 +1,13 @@
+script_name=MaskVisual$(MASK)
+samples=outer
+
+executable            = sub.sh
+arguments 	      = $(Step) $(MASK) $(samples)
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name)_$(samples).$(ClusterId).$(ProcId).$(Step).$(MASK).out
+error                 = out/$(script_name)_$(samples).$(ClusterId).$(ProcId).$(Step).$(MASK).err
+log                   = log/$(script_name)_$(samples).$(ClusterId).log
+RequestCpus	      = 1
++JobFlavour = "longlunch"
+queue 100 MASK in (3, 4, 5)
