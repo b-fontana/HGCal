@@ -34,7 +34,10 @@ source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
 
 #back to the job folder
+echo "CHECK"
+pwd;
 cd "${INIT_FOLDER}";
+pwd
 
 #cd UserCode/HGCalMaskVisualProd/;
 #scram b -j 8;
@@ -48,9 +51,11 @@ else
     exit 0;
 fi
 
-outfile="${1}_mask${2}_${3}_nopu.root"
-if [ -r "${outfile}" ]; then
-    mv "${outfile}" /eos/user/b/bfontana/HGCalMaskResolution/mask"${2}"_"${3}"/;
+outfile="${1}_mask${2}_${3}_nopu"
+if [ -r "${outfile}.root" ]; then
+    mv "${outfile}.root" /eos/user/b/bfontana/HGCalMaskResolution/mask"${2}"_"${3}"/;
+    rm "${outfile}_out.root" /eos/user/b/bfontana/HGCalMaskResolution/mask"${2}"_"${3}"/;
 else
-    echo "File ${outfile} was not produced by the configuration file.";
+    echo "File ${outfile}.root was not produced by the configuration file.";
+    exit 0;
 fi
