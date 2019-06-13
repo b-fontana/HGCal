@@ -29,7 +29,7 @@ def convertToHex_alternative(h, N, a):
     -> a: the length in cm of each side of each cell
     """
     def convertCoords(u, v):
-        return 1.5*(v-N)+1, u-0.5*(N+v)
+        return 1.5*(v-N)+1, 1.5*(u-0.5*(N+v))
 
     def allowedWafers():
         m = []
@@ -66,7 +66,7 @@ def convertToHex_alternative(h, N, a):
         hhex.AddBin(6, x, y)
  
     
-    lim = 20 if N==12 else 13
+    lim = 19.9 if N==12 else 12.9
     hhex = TH2Poly('hhex', 'hhex', -lim, lim, -lim, lim)
     xylist = []
     allWaf = allowedWafers()
@@ -107,7 +107,7 @@ def keyTitleMap(keylist):
 
 pcoords = [[[0.02,0.49,0.98,0.93],    #pad1
            [0.02,0.02,0.98,0.48]]]   #pad2
-pad_title = ['RecHits', 'Geom']
+pad_title = ['RecHits', 'Maximal geometry']
 for ic,_ in enumerate(pcoords):
     if len(pcoords[ic]) != len(pad_title):
         print(ic, len(pcoords[ic]), len(pad_title))
@@ -144,16 +144,17 @@ for isd,sd in enumerate(subd_names):
                                     pcoords=pcoords) as plot:
             #for ipad in range(len(pad_title)):
             ipad=0
-            h1 = convertToHex_alternative(histos[0], int(uvN[2]), 0.5)
+            h1 = convertToHex_alternative(histos[0], int(uvN[2]), .8)
             plot.plotHistogram(cpos=0, ppos=ipad, h=h1, title=pad_title[ipad], 
-                               xaxis_title='X [cm]', yaxis_title='Y [cm]',
-                               draw_options='colz')
+                               xaxis_title='X', yaxis_title='Y',
+                               draw_options='0 colz2 9')
 
             ipad=1
-            h2 = convertToHex_alternative(histos[1], int(uvN[2]), 0.5)
+            h2 = convertToHex_alternative(histos[1], int(uvN[2]), .8)
+            h2.SetMinimum(0.001)#cheat to create correct full/empty distinction
             plot.plotHistogram(cpos=0, ppos=ipad, h=h2, title=pad_title[ipad], 
-                               xaxis_title='X [cm]', yaxis_title='Y [cm]',
-                               draw_options='0 colz')
+                               xaxis_title='X', yaxis_title='Y',
+                               draw_options='0 9')
 
             #title and save
             ctitle = 'Layer #'+str(layers[isd])+'       Wafer: U='+uvN[0]+', V='+uvN[1] 
