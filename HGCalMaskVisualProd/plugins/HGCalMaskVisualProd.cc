@@ -40,7 +40,6 @@ HGCalMaskVisualProd::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 	histosRecHits_[det_layer][waferId]->Fill(cellUV.first, cellUV.second, recHit.energy());
     }
   }
-  FileUtils::close(outRecHits_);
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
@@ -79,17 +78,8 @@ HGCalMaskVisualProd::beginRun(edm::Run const&, edm::EventSetup const& es)
   }
 
   //create directories and files, one per layer being analysed
-  for(const auto &itLayer : layersAnalysed_) {
+  for(const auto &itLayer : layersAnalysed_)
     layersAnalysedDirs_.insert( std::make_pair(itLayer, fs_->mkdir("layer"+std::to_string(itLayer))) );
-    outRecHits_.setName("data/HistoNamesRecHitsLayer"+
-			std::to_string(itLayer)+"_mask"+std::to_string(mask_),
-			static_cast<int>(itLayer));
-    FileUtils::create(outRecHits_, static_cast<int>(itLayer));
-    outGeom_.setName("data/HistoNamesGeomLayer"+
-		     std::to_string(itLayer)+"_mask"+std::to_string(mask_),
-		     static_cast<int>(itLayer));
-    FileUtils::create(outGeom_, static_cast<int>(itLayer));
-  }
 
   createHistograms();
 }
@@ -164,8 +154,6 @@ void HGCalMaskVisualProd::createHistograms() {
 			  layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
 								    N2,0.,N2,
 								    N2,0.,N2)));
-	  FileUtils::reopen(outRecHits_, static_cast<int>(det_layer), std::ios_base::app);
-	  FileUtils::write(outRecHits_, nn);
 	}
 
 	//if histosGeom_[layer] does not exist, it will be initialized
@@ -177,8 +165,6 @@ void HGCalMaskVisualProd::createHistograms() {
 			 layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
 								   N2,0.,N2,
 								   N2,0.,N2)));
-	  FileUtils::reopen(outGeom_, static_cast<int>(det_layer), std::ios_base::app);
-	  FileUtils::write(outGeom_, nn);
 	}
       }
 
@@ -187,7 +173,6 @@ void HGCalMaskVisualProd::createHistograms() {
       fillGeomHistograms(det_layer, waferId, celluv);
     }
   }
-  FileUtils::close(outGeom_); //the Geometry histograms are not needed in the produce() stage
 }
 
 void HGCalMaskVisualProd::fillGeomHistograms(int_layer layer, int wId, std::pair<int,int> cUV) {

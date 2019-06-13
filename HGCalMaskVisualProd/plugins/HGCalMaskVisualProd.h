@@ -31,9 +31,6 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 
-//user include files
-#include "UserCode/HGCalMaskVisualProd/interface/FileUtils.h"
-
 //
 // class declaration
 //
@@ -58,8 +55,6 @@ private:
   const std::vector<int_layer> layersAnalysed_;
   umap<int_layer, umap<int, TH2F*> > histosRecHits_; //stores the position of RecHits
   umap<int_layer, umap<int, TH2F*> > histosGeom_; //stores the underlying geometry
-  FileUtils::outData outRecHits_;
-  FileUtils::outData outGeom_;
   const int_layer lastLayerEE_ = 28;
   const int mask_ = 0;
 			  
