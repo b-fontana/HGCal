@@ -15,6 +15,18 @@ parser = argparse.ArgumentParser()
 FLAGS, _ = Argparser.add_args(parser)
 Argparser.print_args(FLAGS)
 
+m = []
+N = 8
+for u,v in zip(range(N+1),range(N-1,2*N,1)):
+    for i in range(v+1):
+        m.append(tuple((u,i)))
+for u,v in zip(range(N+1,2*N),range(1,N)):
+    for i in range(v,2*N):
+        m.append(tuple((u,i)))
+print(m)
+quit()
+
+
 def getUVFromTitle(title):
     u, v, N, rest = title.split(',')
     return u, v, N, rest
@@ -37,7 +49,9 @@ def convertToHex_alternative(h, N, a):
         for u,v in zip(range(N+1,2*N),range(1,N)):
             for i in range(v,2*N):
                 m.append(tuple((u,i)))
+        print(m)
         return m
+        
 
     def addBin(xc, yc):
         """
@@ -63,25 +77,27 @@ def convertToHex_alternative(h, N, a):
         hhex.AddBin(6, x, y)
  
     
-    lim = 20 if N==12 else 14
+    lim = 20 if N==12 else 13
     hhex = TH2Poly('hhex', 'hhex', -lim, lim, -lim, lim)
     xylist = []
     allWaf = allowedWafers()
 
-    for U in range(h.GetNbinsX()-1):
-        for V in range(h.GetNbinsY()-1):
+    for U in range(h.GetNbinsX()):
+        for V in range(h.GetNbinsY()):
             if (U,V) in allWaf:
                 x, y = convertCoords(U, V)
                 if (x,y) not in xylist:
                     addBin(x, y)
                     xylist.append((x,y))
 
-    for U in range(h.GetNbinsX()-1):
-        for V in range(h.GetNbinsY()-1):
+    for U in range(h.GetNbinsX()):
+        for V in range(h.GetNbinsY()):
             x, y = convertCoords(U, V)
             if (x,y) in xylist:  
-                global_bin = hhex.FindBin(x, y)
-                hhex.SetBinContent(global_bin, h.GetBinContent(U, V))
+                global_bin_standard = h.FindBin(U, V)
+                content_standard = h.GetBinContent(global_bin_standard)
+                global_bin_hex = hhex.FindBin(x, y)
+                hhex.SetBinContent(global_bin_hex, content_standard)
     return hhex
 
 def keyTitleMap(keylist):
@@ -134,8 +150,7 @@ for isd,sd in enumerate(subd_names):
             histos = [kmap[title1].ReadObj(), h]
         else:
             raise ValueError('There is a problem with the title of the histogram.')
-            
-        print(histos[0], histos[1])
+
         with RootUtils.RootPlotting(ncanvas=1, npads=len(pad_title), 
                                     pcoords=pcoords) as plot:
             #for ipad in range(len(pad_title)):
