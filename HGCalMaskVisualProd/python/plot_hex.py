@@ -8,24 +8,14 @@ from ROOT import TCanvas, TFile, TIter, TH2Poly, TPaveLabel, TKey
 from ROOT import gDirectory, gROOT, gStyle, kTRUE, kFALSE
 gROOT.SetBatch(kTRUE)
 gStyle.SetOptStat(kFALSE)
+gStyle.SetPalette(53)
+gStyle.SetNumberContours(99)
 
 import RootUtils, SystemUtils, Argparser
 
 parser = argparse.ArgumentParser()
 FLAGS, _ = Argparser.add_args(parser)
 Argparser.print_args(FLAGS)
-
-m = []
-N = 8
-for u,v in zip(range(N+1),range(N-1,2*N,1)):
-    for i in range(v+1):
-        m.append(tuple((u,i)))
-for u,v in zip(range(N+1,2*N),range(1,N)):
-    for i in range(v,2*N):
-        m.append(tuple((u,i)))
-print(m)
-quit()
-
 
 def getUVFromTitle(title):
     u, v, N, rest = title.split(',')
@@ -49,7 +39,6 @@ def convertToHex_alternative(h, N, a):
         for u,v in zip(range(N+1,2*N),range(1,N)):
             for i in range(v,2*N):
                 m.append(tuple((u,i)))
-        print(m)
         return m
         
 
@@ -157,12 +146,14 @@ for isd,sd in enumerate(subd_names):
             ipad=0
             h1 = convertToHex_alternative(histos[0], int(uvN[2]), 0.5)
             plot.plotHistogram(cpos=0, ppos=ipad, h=h1, title=pad_title[ipad], 
-                               xaxis_title='X [cm]', yaxis_title='Y [cm]')
+                               xaxis_title='X [cm]', yaxis_title='Y [cm]',
+                               draw_options='colz')
 
             ipad=1
             h2 = convertToHex_alternative(histos[1], int(uvN[2]), 0.5)
             plot.plotHistogram(cpos=0, ppos=ipad, h=h2, title=pad_title[ipad], 
-                               xaxis_title='X [cm]', yaxis_title='Y [cm]')
+                               xaxis_title='X [cm]', yaxis_title='Y [cm]',
+                               draw_options='0 colz')
 
             #title and save
             ctitle = 'Layer #'+str(layers[isd])+'       Wafer: U='+uvN[0]+', V='+uvN[1] 
