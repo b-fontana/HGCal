@@ -162,8 +162,8 @@ void HGCalMaskVisualProd::createHistograms() {
 	    std::to_string(N)+",RecHits";
 	  histosRecHits_[det_layer].insert(std::make_pair(waferId,
 			  layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								    N2,-0.5,N2+0.5,
-								    N2,-0.5,N2+0.5)));
+								    N2,0.,N2,
+								    N2,0.,N2)));
 	  FileUtils::reopen(outRecHits_, static_cast<int>(det_layer), std::ios_base::app);
 	  FileUtils::write(outRecHits_, nn);
 	}
@@ -175,8 +175,8 @@ void HGCalMaskVisualProd::createHistograms() {
 	    std::to_string(N)+",Geom";
 	  histosGeom_[det_layer].insert(std::make_pair(waferId,
 			 layersAnalysedDirs_[det_layer].make<TH2F>(nn.c_str(),nn.c_str(),
-								   N2,-0.5,N2+0.5,
-								   N2,-0.5,N2+0.5)));
+								   N2,0.,N2,
+								   N2,0.,N2)));
 	  FileUtils::reopen(outGeom_, static_cast<int>(det_layer), std::ios_base::app);
 	  FileUtils::write(outGeom_, nn);
 	}
