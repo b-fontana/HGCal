@@ -34,8 +34,6 @@ source /afs/cern.ch/cms/cmsset_default.sh
 eval `scramv1 runtime -sh` #cmsenv substitute
 
 #back to the job folder
-echo "CHECK"
-pwd;
 cd "${INIT_FOLDER}";
 pwd
 
