@@ -1,13 +1,13 @@
-script_name=Mask$(MASK)ResolutionAna
-samples=outer
+samples=inner
+script_name=Mask$(MASK)ResolutionAna_$(samples)
 
 executable            = subMaskResolution.sh
 arguments 	      = $(Step) $(MASK) $(samples)
 universe	      = vanilla
 requirements          = (OpSysAndVer =?= "CentOS7")
-output                = out/$(script_name)_$(samples).$(ClusterId).$(ProcId).$(Step).$(MASK).out
-error                 = out/$(script_name)_$(samples).$(ClusterId).$(ProcId).$(Step).$(MASK).err
-log                   = log/$(script_name)_$(samples).$(ClusterId).log
+output                = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).out
+error                 = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).err
+log                   = log/$(script_name).$(ClusterId).log
 RequestCpus	      = 1
 +JobFlavour = "workday"
-queue 1 MASK in (3)
+queue 100 MASK in (6)

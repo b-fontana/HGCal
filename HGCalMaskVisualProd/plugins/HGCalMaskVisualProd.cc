@@ -30,7 +30,8 @@ HGCalMaskVisualProd::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     if(cellMask(sid))
       continue;
 
-    //store the data in case the RecHit was measured in one of the user's chosen layersAnalysed
+    //store the data in case the RecHit was measured in one 
+    //of the user's chosen layersAnalysed
     if(std::find(layersAnalysed_.begin(), layersAnalysed_.end(), det_layer) != layersAnalysed_.end()) {
       std::pair<int,int> cellUV(sid.cellUV());
       std::pair<int,int> waferUV(sid.waferUV());
@@ -168,7 +169,7 @@ void HGCalMaskVisualProd::createHistograms() {
 	}
       }
 
-      //filling the geometry histograms here avoids looping through the DetIds more than once
+      //filling geometry histograms here avoids looping through the DetIds more than once
       std::pair<int,int> celluv = sid.cellUV();
       fillGeomHistograms(det_layer, waferId, celluv);
     }
