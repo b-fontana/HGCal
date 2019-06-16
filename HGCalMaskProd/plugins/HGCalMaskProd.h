@@ -31,9 +31,6 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "RecoLocalCalo/HGCalRecAlgos/interface/RecHitTools.h"
 
-//user include files
-#include "UserCode/HGCalMaskProd/interface/FileUtils.h"
-
 //
 // class declaration
 //
