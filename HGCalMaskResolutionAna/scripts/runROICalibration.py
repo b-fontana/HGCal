@@ -4,7 +4,7 @@ from UserCode.HGCalMaskResolutionAna import Argparser
 from array import array as Carray
 from collections import OrderedDict
 
-from ROOT import TCanvas, TLatex, TFile, TMath, TH1F, TH2F, TLorentzVector
+from ROOT import TCanvas, TLatex, TFile, TMath, TH1F, TH2F, TLorentzVector, TF1
 from ROOT import gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskResolutionAna.RootTools import buildMedianProfile
 
@@ -137,7 +137,7 @@ def applyCalibrationTo(url,calib,title,ncands=2):
     data=fIn.Get('data')
 
     histos={}
-    limsup, liminf = 0.4, -0.2
+    limsup, liminf = 0.6, -.8
     for ireg in xrange(1,4):
         histos['dm%d'%ireg]  = TH1F('dm%d'%ireg, 
                                     ';#Delta m_{#gamma#gamma}/m_{#gamma#gamma};PDF',
@@ -214,7 +214,16 @@ def applyCalibrationTo(url,calib,title,ncands=2):
             h.Draw()
             h.GetYaxis().SetTitleOffset(0.9)
             h.GetYaxis().SetRangeUser(0,h.GetMaximum()*1.2)
-            h.Fit('gaus','M+')
+            f1 = TF1('f1', 'crystalball', liminf, limsup)
+            f1.SetParameters(1., 0., .15, 1., 1.)
+            #f1 = TF1('f1', 'gaus', liminf, limsup)
+            #f1.SetParameters(1., 0., 0.2)
+            f1.SetParLimits(0, 0.001, 100.)#Constant 
+            f1.SetParLimits(1, -.5, .5)#Mean
+            f1.SetParLimits(2, 0.1, 10.)#Sigma
+            f1.SetParLimits(3, 0.001, 10.)#Alpha
+            f1.FixParameter(4, .5)#N
+            h.Fit('f1','M+')
             gaus=h.GetListOfFunctions().At(0)
             tex=TLatex()
             tex.SetTextFont(42)

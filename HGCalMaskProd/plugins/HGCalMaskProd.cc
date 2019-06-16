@@ -5,7 +5,7 @@ HGCalMaskProd::HGCalMaskProd(const edm::ParameterSet& iConfig):
   layersAnalysed_(iConfig.getParameter<std::vector<int_layer>>("LayersAnalysed")),
   mask_(iConfig.getParameter<unsigned int>("Mask"))
 {
-  produces<HGCRecHitCollection>("RecHitsMasked:HGCEERecHits");  
+  produces<HGCRecHitCollection>(collectionName);  
 }
 
 HGCalMaskProd::~HGCalMaskProd()
@@ -32,7 +32,7 @@ HGCalMaskProd::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
       continue;
     recHitsMaskColl->push_back(recHit);
   }    
-  iEvent.put(std::move(recHitsMaskColl), "RecHitsMasked:HGCEERecHits");
+  iEvent.put(std::move(recHitsMaskColl), collectionName);
 
   /* this is an EventSetup example
   //Read SetupData from the SetupRecord in the EventSetup

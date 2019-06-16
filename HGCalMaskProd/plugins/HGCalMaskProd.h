@@ -57,6 +57,7 @@ private:
   const std::vector<int_layer> layersAnalysed_;
   const int_layer lastLayerEE_ = 28;
   const int mask_ = 0;
+  std::string collectionName = "HGCEERecHits";
 
   //functions
   virtual void beginStream(edm::StreamID) override;

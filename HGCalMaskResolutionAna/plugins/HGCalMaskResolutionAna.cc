@@ -30,7 +30,7 @@ using namespace std;
 
 HGCalMaskResolutionAna::HGCalMaskResolutionAna( const edm::ParameterSet &iConfig ) : 
   mc_( consumes<edm::HepMCProduct>(edm::InputTag("generatorSmeared")) ),
-  recHitsEE_( consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCEERecHits")) ),
+  recHitsEE_(consumes<HGCRecHitCollection>(edm::InputTag("RecHitsMasked","HGCEERecHits")) ),
   genParticles_( consumes<std::vector<reco::GenParticle>>(edm::InputTag("genParticles")) ),
   simTracks_( consumes<std::vector<SimTrack>>(edm::InputTag("g4SimHits")) ),
   simVertices_( consumes<std::vector<SimVertex>>(edm::InputTag("g4SimHits")) ),

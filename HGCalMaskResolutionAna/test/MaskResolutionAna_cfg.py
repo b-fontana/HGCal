@@ -90,7 +90,7 @@ else:
                         fileNames = cms.untracked.vstring(fNames),
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 
-process.prod = cms.EDProducer('HGCalMaskProd',
+process.RecHitsMasked = cms.EDProducer('HGCalMaskProd',
                               LayersAnalysed = cms.vuint32(1,2),
                               Mask = cms.uint32(F.mask))
 
@@ -100,7 +100,7 @@ process.an = cms.EDAnalyzer("HGCalMaskResolutionAna",
                             thicknessCorrection = cms.vdouble(1.132,1.092,1.084),
                             byClosest = cms.bool(False))
 process.an_mask = process.an.clone(
-    recHitCollection = cms.InputTag("RecHitsMasked","HGCEERecHits"))
+    recHitCollection = cms.InputTag("RecHitsMasked", "HGCEERecHits"))
 
 pu_str = "pu" if F.pu else "nopu"
 #outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'_weight/'
@@ -113,5 +113,5 @@ fileName = fileName + '_out'
 process.out = cms.OutputModule("PoolOutputModule", 
                                fileName = cms.untracked.string(fileName+".root"))
 
-process.p = cms.Path(process.prod * process.an_mask)
+process.p = cms.Path(process.RecHitsMasked * process.an_mask)
 process.outpath = cms.EndPath(process.out)
