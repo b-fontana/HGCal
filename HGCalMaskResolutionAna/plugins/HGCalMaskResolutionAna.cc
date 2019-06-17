@@ -96,7 +96,7 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
   iEvent.getByToken(genParticles_, genParticlesHandle);
   for(size_t i = 0; i < genParticlesHandle->size(); ++i )  {    
     const reco::GenParticle &p = (*genParticlesHandle)[i];
-    if(p.p4().Pz()<0.) continue; 
+    //if(p.p4().Pz()<0.) continue; 
     if(p.pdgId()!=22) continue; //photon
     //if(!p.isPromptFinalState()) continue;    
     //if(fabs(p.eta())<1.5 || fabs(p.eta())>2.9) continue;
@@ -179,11 +179,13 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     //store information
     unsigned int layer = recHitTools_.getLayerWithOffset(did);
     double thickness   = recHitTools_.getSiThickness(did);
-    float en=h.energy();
+    float en = h.energy();
     double mip = dEdXWeights_[layer] * 0.001;  // convert in GeV
     size_t thickCorrIdx(0);
-    if (thickness > 199. && thickness < 201) thickCorrIdx++;
-    if (thickness > 299. && thickness < 301) thickCorrIdx++;
+    if (thickness > 199. && thickness < 201) 
+      thickCorrIdx = 1;
+    if (thickness > 299. && thickness < 301) 
+      thickCorrIdx = 2;
     mip /= thicknessCorrection_[thickCorrIdx];
     float en_mips=en/mip;
     if(en_mips<1) continue;
