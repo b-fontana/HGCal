@@ -47,6 +47,12 @@ class Argparser():
             help='Pile-up tag.'
         )
         self.p.add_argument(
+            '--samples',
+            type=str,
+            default='',
+            help="Sample being analysed ('inner' or 'outer')"
+        )
+        self.p.add_argument(
             '--outpath',
             type=str,
             default='',
