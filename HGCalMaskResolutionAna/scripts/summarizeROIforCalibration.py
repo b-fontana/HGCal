@@ -1,69 +1,67 @@
+import sys
 import ROOT
 import array
-import sys
+from UserCode.HGCalMaskResolutionAna import Argparser
 
+from ROOT import TFile, TNtuple
 from UserCode.HGCalMaskResolutionAna.ROISummary import ROISummary
 
+parser = Argparser.Argparser()
+FLAGS = parser.get_flags()
+parser.print_args()
 
-def main(url_in=sys.argv[1],url_out=sys.argv[2]):
-    
-    """makes a simpler summary of the ROI for fast calibration"""
-    
-    # open the output file
-    fout = ROOT.TFile(url_out, "RECREATE")
-    fout.cd()
-    varnames  = ['genen1','geneta1','genphi1']
-    #varnames += ['genen2','geneta2','genphi2']
-    for i in xrange(1,4):
-        varnames+=['en1_%d'%i,'noise1_%d'%i]#,'en2_%d'%i,'noise2_%d'%i]
-    output_tuple = ROOT.TNtuple("data","data",":".join(varnames))
+def main():
+    """
+    Creates a simple summary of the ROI for fast calibration.
+    """
+    NREG, NLAYERS = 3, 28
+    fOut = TFile(FLAGS.outpath, "RECREATE")
+    fOut.cd()
+    varnames  = ['genen','geneta','genphi']
+    for i in range(1,NREG+1):
+        for il in range(1,NLAYERS+1):
+            varnames += ['en_sr{}_layer{}'.format(i,il), 
+                         'noise_sr{}_layer{}'.format(i,il)]
+    output_tuple = TNtuple("data","data",":".join(varnames))
 
-    #loop over events
-    fIn=ROOT.TFile.Open(url_in)
-    t=fIn.Get('an_mask/data')
-    for i in xrange(0,t.GetEntriesFast()):
-
+    fIn = TFile.Open(FLAGS.noPUFile)
+    t = fIn.Get('an_mask/data')
+    for i in range(0,t.GetEntriesFast()):
         t.GetEntry(i)
 
         #define the ROIs
         roiList={}
-        for ir in xrange(0,t.ROIs.size()):
-            if t.ROIs[ir].id()<0 : continue
-            roiList[ir]=ROISummary(t.ROIs[ir].p4())
+        for ir in range(0,t.ROIs.size()):
+            if t.ROIs[ir].id() < 0: 
+                continue
+            roiList[ir] = ROISummary(t.ROIs[ir].p4())
 
         for h in t.Hits:
             roiIdx  = h.associatedROI()
             rid     = t.ROIs[roiIdx].id()
             roiKey  = roiIdx if rid>0 else abs(rid)-1
             en      = h.en()
+            layer   = h.layerId()
             isNoise = True if rid<0 else False
             regIdx  = h.signalRegion()
-            roiList[roiKey].addHit(en=en,isNoise=isNoise,regIdx=regIdx)
-            
-        #fill this event in the ntuple
-        varvals=[]
+            roiList[roiKey].addHit(en=en, layer=layer, isNoise=isNoise, regIdx=regIdx)
 
         #mc truth
         for r in roiList:
-            genP4=roiList[r].genP4
+            varvals = []
+            genP4 = roiList[r].getGenP4()
             varvals += [genP4.E(),genP4.Eta(),genP4.Phi()]
             
-        #results for the 3 different regions
-        for ireg in xrange(1,4):
-            for r in roiList:
-                recP4    = roiList[r].getReconstructedP4(ireg)
-                noise    = roiList[r].getNoiseInRing(ireg)/5. #averaged over 5 different regions
-                varvals += [recP4.E(),noise]
-        
-        #all done
-        #print(varnames)
-        #print(varvals)
-        output_tuple.Fill(array.array("f",varvals))
+            for ireg in range(1,NREG+1):
+                for il in range(1,NLAYERS+1):
+                    recP4    = roiList[r].getReconstructedP4(ireg, layer)
+                    noise    = roiList[r].getNoiseInRegion(ireg, layer)
+                    varvals += [recP4.E(),noise]
+            output_tuple.Fill(array.array("f", varvals))
 
-    #close file
-    fout.cd()
+    fOut.cd()
     output_tuple.Write()
-    fout.Close()
+    fOut.Close()
 
 if __name__ == "__main__":
     main()
