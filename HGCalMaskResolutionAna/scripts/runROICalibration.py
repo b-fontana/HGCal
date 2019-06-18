@@ -125,7 +125,7 @@ def doPUCalibration(url, calib, nq=10):
                                             FLAGS.plotLabel+' (PU=140)', 'pol2')
     return calib
 
-def applyCalibrationTo(url,calib,title,ncands=2):
+def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
     """
     Applies the calibration to the photons and shows the energy resolution.
     """
@@ -133,8 +133,8 @@ def applyCalibrationTo(url,calib,title,ncands=2):
     fIn=TFile.Open(url)
     data=fIn.Get('data')
 
-    histos={}
-    limsup, liminf = 1., -2.
+    histos=OrderedDict()
+    limsup, liminf = 4., -2.
     etabins = 12
     if FLAGS.samples == 'inner':
         phibins, etainf, etasup = 12, 2.75, 3.15
@@ -143,16 +143,32 @@ def applyCalibrationTo(url,calib,title,ncands=2):
     else:
         raise ValueError("Specify a valid value for the '--samples' option.")
 
-    hnames = ['den{}', 'den{}_2D_res', 'den{}_2D_events']
-    for ireg in range(1,NREG+1):
-        histos[hnames[0].format(ireg)] = TH1F(hnames[0].format(ireg),';#Delta E/E;PDF',
-                                              50, liminf, limsup)
-        histos[hnames[1].format(ireg)] = TH2F(hnames[1].format(ireg), ';|#eta|;#phi',
-                                              50, etainf, etasup,
-                                              12, -TMath.Pi(), TMath.Pi())
-        histos[hnames[2].format(ireg)] = TH2F(hnames[2].format(ireg), ';|#eta|;#phi',
-                                              50, etainf, etasup,
-                                              12, -TMath.Pi(), TMath.Pi())
+    if FLAGS.ncomponents == 1:
+        hnames = ['den{}', 'den{}_2D_res', 'den{}_2D_events']
+        for ireg in range(1,NREG+1):
+            histos[hnames[0].format(ireg)] = TH1F(hnames[0].format(ireg),';#Delta E/E;PDF',
+                                                  50, liminf, limsup)
+            histos[hnames[1].format(ireg)] = TH2F(hnames[1].format(ireg), ';|#eta|;#phi',
+                                                  50, etainf, etasup,
+                                                  12, -TMath.Pi(), TMath.Pi())
+            histos[hnames[2].format(ireg)] = TH2F(hnames[2].format(ireg), ';|#eta|;#phi',
+                                                  50, etainf, etasup,
+                                                  12, -TMath.Pi(), TMath.Pi())
+    elif FLAGS.ncomponents == 2:
+        hnames = ['res{}_signal', 'res{}_bckg', 
+                  'en{}_signal',  'en{}_bckg']
+        for ireg in range(1,NREG+1):
+            histos[hnames[0].format(ireg)] = TH1F(hnames[0].format(ireg), ';#Delta E/E;PDF',
+                                                  50, liminf, limsup)
+            histos[hnames[1].format(ireg)] = TH1F(hnames[1].format(ireg), ';#Delta E/E;PDF',
+                                                  50, liminf, limsup)
+            histos[hnames[2].format(ireg)] = TH1F(hnames[1].format(ireg), ';E;PDF',
+                                                  80, 0., 180.)
+            histos[hnames[3].format(ireg)] = TH1F(hnames[1].format(ireg), ';E;PDF',
+                                                  80, 0., 180.)
+
+    else:
+        raise ValueError('The number of components has to be 1 or 2.')
 
     for h in histos:
         histos[h].Sumw2()
@@ -164,33 +180,14 @@ def applyCalibrationTo(url,calib,title,ncands=2):
     for i in range(0,data.GetEntriesFast()):
         data.GetEntry(i)
 
-        #generator level photons
-        genphotons=[]
-        for ia in range(1,ncands+1):
-            genen  = getattr(data,'genen%d'%ia)
-            geneta = getattr(data,'geneta%d'%ia)
-            genphi = getattr(data,'genphi%d'%ia)
-            genphotons.append(TLorentzVector(0,0,0,0))
-            genphotons[-1].SetPtEtaPhiM(genen/TMath.CosH(geneta),geneta,genphi,0.)
-        genh = None
-        if ncands==2 : genh=genphotons[0]+genphotons[1]
-
-        #H->gg fiducial cuts
-        if ncands==2:
-            if genphotons[0].Pt()<20 or  genphotons[1].Pt()<20 : continue
-            if genphotons[0].Pt()<40 and genphotons[1].Pt()<40 : continue
-            if abs(genphotons[0].Eta())<1.5 or abs(genphotons[1].Eta())<1.5 : continue
-            if abs(genphotons[0].Eta())>2.8 or abs(genphotons[1].Eta())>2.8 : continue
-
         #reconstructed photons in different regions
         for ireg in range(1,NREG+1):
-            photons=[]
             for ia in range(1,ncands+1):
                 genen    = getattr(data,'genen{}'.format(ia))
                 geneta   = getattr(data,'geneta{}'.format(ia))
                 genphi   = getattr(data,'genphi{}'.format(ia))
-                recen    = getattr(data,'en%d_{}'.format((ia,ireg)))
-                #avgnoise = getattr(data,'noise%d_%d'%(ia,ireg))
+                recen    = getattr(data,'en{}_{}'.format(ia,ireg))
+                #avgnoise = getattr(data,'noise{}_{}'.format(ia,ireg))
                 avgnoise = getattr(data,'noise{}_3'.format(ia))*A[ireg-1]/A[2]
 
                 if 'L0' in calib:
@@ -201,78 +198,108 @@ def applyCalibrationTo(url,calib,title,ncands=2):
                             recen=recen-calib['L2'][ireg].Eval(avgnoise)
 
                 deltaE = recen/genen-1.
-                histos[hnames[0].format(ireg)].Fill(deltaE)
-                histos[hnames[1].format(ireg)].Fill(geneta, genphi, deltaE)
-                histos[hnames[2].format(ireg)].Fill(geneta, genphi)
-                photons.append(TLorentzVector(0,0,0,0))
-                photons[-1].SetPtEtaPhiM(recen/TMath.CosH(geneta),geneta,genphi,0.)
-
+                if FLAGS.ncomponents == 1:
+                    histos[hnames[0].format(ireg)].Fill(deltaE)
+                    histos[hnames[1].format(ireg)].Fill(geneta, genphi, deltaE)
+                    histos[hnames[2].format(ireg)].Fill(geneta, genphi)
+                if FLAGS.ncomponents == 2:
+                    if abs(geneta) <= 2.95:
+                        histos[hnames[0].format(ireg)].Fill(deltaE)
+                        histos[hnames[2].format(ireg)].Fill(recen)
+                    else:
+                        histos[hnames[1].format(ireg)].Fill(deltaE)
+                        histos[hnames[3].format(ireg)].Fill(recen)
     fIn.Close()
 
-    pcoords = [[[0.01,0.76,0.33,0.99],   #canvas0, pad0
-                [0.34,0.76,0.66,0.99],   #canvas0, pad1
-                [0.67,0.76,0.99,0.99],   #canvas0, pad2
-                [0.01,0.51,0.33,0.74],   #canvas0, pad3
-                [0.34,0.51,0.66,0.74],   #canvas0, pad4
-                [0.67,0.51,0.99,0.74],   #canvas0, pad5
-                [0.01,0.26,0.33,0.49],   #canvas0, pad6
-                [0.34,0.26,0.66,0.49],   #canvas0, pad7
-                [0.67,0.26,0.99,0.49],   #canvas0, pad8
-                [0.01,0.01,0.33,0.24],   #canvas0, pad9
-                [0.34,0.01,0.66,0.24],   #canvas0, pad10
-                [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
-    cdims = [[2000,2000]]
+    if FLAGS.ncomponents == 1:
+        pcoords = [[[0.01,0.76,0.33,0.99],   #canvas0, pad0
+                    [0.34,0.76,0.66,0.99],   #canvas0, pad1
+                    [0.67,0.76,0.99,0.99],   #canvas0, pad2
+                    [0.01,0.51,0.33,0.74],   #canvas0, pad3
+                    [0.34,0.51,0.66,0.74],   #canvas0, pad4
+                    [0.67,0.51,0.99,0.74],   #canvas0, pad5
+                    [0.01,0.26,0.33,0.49],   #canvas0, pad6
+                    [0.34,0.26,0.66,0.49],   #canvas0, pad7
+                    [0.67,0.26,0.99,0.49],   #canvas0, pad8
+                    [0.01,0.01,0.33,0.24],   #canvas0, pad9
+                    [0.34,0.01,0.66,0.24],   #canvas0, pad10
+                    [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
+        cdims = [[2000,2000]]
+    else:
+        pcoords = [[[0.01,0.76,0.33,0.99],   #canvas0, pad0
+                    [0.34,0.76,0.66,0.99],   #canvas0, pad1
+                    [0.67,0.76,0.99,0.99],   #canvas0, pad2
+                    [0.01,0.51,0.33,0.74],   #canvas0, pad3
+                    [0.34,0.51,0.66,0.74],   #canvas0, pad4
+                    [0.67,0.51,0.99,0.74],   #canvas0, pad5
+                    [0.01,0.26,0.33,0.49],   #canvas0, pad6
+                    [0.34,0.26,0.66,0.49],   #canvas0, pad7
+                    [0.67,0.26,0.99,0.49],   #canvas0, pad8
+                    [0.01,0.01,0.33,0.24],   #canvas0, pad9
+                    [0.34,0.01,0.66,0.24],   #canvas0, pad10
+                    [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
+        cdims = [[2000,2000]]
+        correct_order = ['res1_signal', 'res2_signal', 'res3_signal',
+                         'res1_bckg',   'res2_bckg',   'res3_bckg',
+                         'en1_signal',  'en2_signal',  'en3_signal',
+                         'en1_bckg',    'en2_bckg',    'en3_bckg']
+        assert len(correct_order) == len(histos.keys())
+        histos = [histos[correct_order[i]] for i in range(len(correct_order))]
 
-    with RootPlotting(ncanvas=1, npads=4*NREG, cdims=cdims, pdims=pcoords) as plot:
-        for ireg in range(1,NREG+1):
-            h = histos[hnames[0].format(ireg)]
+    plotHistograms(histos, cdims, pcoords, 'pic')
+    fOut=TFile.Open('calib{}.root'.format(pfix),'RECREATE')
+    for h in histos: 
+        h.Write()
+    fOut.Close()
+
+
+def plotHistograms(histos, cdims, pcoords, cname):
+    """
+    Plots histograms from a list.
+    Arguments:
+    -> histos: list of histograms
+    -> cdims & pccords: as described in RooUtils
+    -> cname: name of the canvas to be created
+    """
+    if not isinstance(histos, list):
+        raise TypeError('The histograms have to be passed in a list.,')
+
+    with RootPlotting(ncanvas=1, npads=len(histos), cdims=cdims, pcoords=pcoords) as plot:
+        for ih in range(len(histos)):
+            h = histos[ih]
             if h.Integral()==0.: continue
             h.Scale(1./h.Integral())
-            plot.plotHistogram(cpos=0, ppos=ireg-1, h=h, draw_options='colz')
+            plot.plotHistogram(cpos=0, ppos=ih, h=h, draw_options='colz')
             h.GetYaxis().SetRangeUser(0,h.GetMaximum()*1.2)
-            f1 = TF1('f1', 'crystalball', liminf, limsup)
-            f1.SetParameters(1., 0., .15, 1., 1.)
-            f1.SetParLimits(0, 0.001, 100.) #Constant 
-            f1.SetParLimits(1, -.5, .5) #Mean
-            f1.SetParLimits(2, 0.1, 10.) #Sigma
-            f1.SetParLimits(3, 0.001, 10.) #Alpha
-            f1.FixParameter(4, .5) #N
-            h.Fit('f1','M+')
-            gaus = h.GetListOfFunctions().At(0)
             tex = TLatex()
             tex.SetTextFont(42)
             tex.SetTextSize(0.04)
             tex.SetNDC()
-            tex.DrawLatex(0.12,0.96,'#bf{CMS} #it{simulation preliminary}')
-            tex.DrawLatex(0.15,0.88,'SR{} ({}-calibrated)'.format(ireg,pfix))
-            tex.DrawLatex(0.15,0.84,'#mu=%3.3f#pm%3.3f'
-                          %(gaus.GetParameter(1),gaus.GetParError(1)))
-            tex.DrawLatex(0.15,0.80,'#sigma=%3.3f#pm%3.3f'
-                          %(gaus.GetParameter(2),gaus.GetParError(2)))
+            if ih < 3 or (ih > 5 and ih < 8):
+                f = TF1('f1', 'gaus', 
+                        h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
+                f.SetParameters(1., 0., .15)
+                f.SetParLimits(0, 0.001, 100.) #Constant 
+                f.SetParLimits(1, -.5, .5) #Mean
+                f.SetParLimits(2, 0.1, 10.) #Sigma
+                plot.fitHistogram(f, h)
+                gaus = h.GetListOfFunctions().At(0)
+                tex.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation preliminary}')
+                tex.DrawLatex(0.15,0.83,'SR{}'.format(ih+1))
+                tex.DrawLatex(0.15,0.80,'#mu=%3.3f#pm%3.3f'
+                              %(gaus.GetParameter(1),gaus.GetParError(1)))
+                tex.DrawLatex(0.15,0.76,'#sigma=%3.3f#pm%3.3f'
+                              %(gaus.GetParameter(2),gaus.GetParError(2)))
+                tex.DrawLatex(0.7,0.83,'|#eta| #leq 2.95')
+            else:
+                tex.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation preliminary}')
+                tex.DrawLatex(0.7,0.83,'|#eta| > 2.95')
             tex.SetTextAlign(31)
-            tex.DrawLatex(0.97,0.96,title)
-        for ireg in range(1,NREG+1):
-            h1 = histos[hnames[1].format(ireg)]
-            cutoff = 50000
-            if h1.GetMaximum()>cutoff:
-                h1.SetMaximum(cutoff)
-            plot.plotHistogram(cpos=0, ppos=ireg+2, h=h1, title='Resolution',
-                               draw_options='colz', copy=True)
-            h2 = histos[hnames[2].format(ireg)]
-            plot.plotHistogram(cpos=0, ppos=ireg+2+NREG, h=h2, title='Nevents',
-                               draw_options='colz')
-            h1.Divide(histos[hnames[2].format(ireg)])
-            if h1.GetMaximum()>cutoff:
-                h1.SetMaximum(cutoff)
-            plot.plotHistogram(cpos=0, ppos=ireg+2+2*NREG, h=h1, 
-                               title='Resolution / Nevents',
-                               draw_options='colz')
-        plot.save(cpos=0, name=os.path.join(FLAGS.outpath,pfix+h.GetName()))
 
-    fOut=TFile.Open('calib{}.root'.format(pfix),'RECREATE')
-    for h in histos: 
-        histos[h].Write()
-    fOut.Close()
+            #cutoff = 50000
+            #if h1.GetMaximum()>cutoff:
+            #    h1.SetMaximum(cutoff)
+        plot.save(cpos=0, name=cname)
 
 def main():
     gStyle.SetOptStat(0)
@@ -283,8 +310,11 @@ def main():
     calib['L0']={}
     calib['L1']={}
     doL0L1Calibration(url=FLAGS.noPUFile, calib=calib)
-    applyCalibrationTo(url=FLAGS.noPUFile, calib=calib, 
-                       title=FLAGS.plotLabel+' (PU=0)', ncands=1)
+
+    
+    CalibratedResolution(url=FLAGS.noPUFile, calib=calib, 
+                         title=FLAGS.plotLabel+' (PU=0)', 
+                         ncomponents=FLAGS.ncomponents, ncands=1)
     
     if FLAGS.PUFile != '':
         calib['L2']={}
