@@ -136,7 +136,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
     histos=OrderedDict()
     limsup, liminf = 4., -2.
     etabins = 12
-    etacut = 1.7#2.95
+    etacut = FLAGS.etacut
     en_depo_sig = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
     en_depo_bckg = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
     avgnoise_depo_sig = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
@@ -202,47 +202,63 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
             recen = getattr(data,'en_sr{}_ROI'.format(ireg))
             avgnoise = getattr(data,'noise_sr3_ROI')*A[ireg-1]/A[2]
 
+            #Calibration factors. f2 is used for PU.
+            f1, f2 = 1., 0.
             if 'L0' in calib:
-                recen /= calib['L0'][ireg].Eval(abs(geneta))+1.0
+                f1 = calib['L0'][ireg].Eval(abs(geneta))+1.0
                 if 'L1' in calib:
-                    recen /= calib['L1'][ireg].Eval(recen)+1.0
-                    if 'L2' in calib and ireg in calib['L2']:
-                        recen -= calib['L2'][ireg].Eval(avgnoise)
+                    f1 /= calib['L1'][ireg].Eval(recen)+1.0            
+            if 'L2' in calib and ireg in calib['L2']:
+                f2 = calib['L2'][ireg].Eval(avgnoise)
 
+            recen = f1*recen - f2
             deltaE = recen/genen-1.
+
             ###Store the energy resolution###
             if FLAGS.ncomponents == 1:
                 histos[hnames[0].format(ireg)].Fill(deltaE)
                 histos[hnames[1].format(ireg)].Fill(geneta, genphi, deltaE)
                 histos[hnames[2].format(ireg)].Fill(geneta, genphi)
-            if FLAGS.ncomponents == 2:
-                if abs(geneta) > etacut:
+            elif FLAGS.ncomponents == 2:
+                if ( (FLAGS.samples == 'inner' and abs(geneta) < etacut) or 
+                     (FLAGS.samples == 'outer' and abs(geneta) >= etacut) ):
                     histos[hnames[0].format(ireg)].Fill(deltaE)
                     histos[hnames[2].format(ireg)].Fill(recen)
-                else:
+                elif ( (FLAGS.samples == 'inner' and abs(geneta) >= etacut) or
+                       (FLAGS.samples == 'outer' and abs(geneta) < etacut) ):
                     histos[hnames[1].format(ireg)].Fill(deltaE)
                     histos[hnames[3].format(ireg)].Fill(recen)
-                    
+                else:
+                    raise ValueError("This value of 'geneta' is very unexpected."
+                                     "Check the above conditions.")
+
                 ###Calculate the energy per layer###
                 for il in range(1,NLAYERS+1):
-                    if abs(geneta) > etacut:
+                    #'signal-like': complete showers
+                    if ( (FLAGS.samples == 'inner' and abs(geneta) < etacut) or
+                         (FLAGS.samples == 'outer' and abs(geneta) >= etacut) ):
                         en_depo_sig[ireg-1][il-1] += getattr(data,'en_sr{}_layer{}'
-                                                      .format(ireg,il))
+                                                            .format(ireg,il))
                         avgnoise_depo_sig[ireg-1][il-1] += getattr(data,'noise_sr3_layer{}'
-                                                      .format(il))*A[ireg-1]/A[2]
-                    elif abs(geneta) <= etacut:
+                                                            .format(il))*A[ireg-1]/A[2]
+                    elif ( (FLAGS.samples == 'inner' and abs(geneta) >= etacut) or
+                           (FLAGS.samples == 'outer' and abs(geneta) < etacut) ):
                         en_depo_bckg[ireg-1][il-1] += getattr(data,'en_sr{}_layer{}'
-                                                      .format(ireg,il))
+                                                              .format(ireg,il))
                         avgnoise_depo_bckg[ireg-1][il-1] += getattr(data,'noise_sr3_layer{}'
-                                                      .format(il))*A[ireg-1]/A[2]
+                                                              .format(il))*A[ireg-1]/A[2]
+                    else:
+                        raise ValueError("This value of 'geneta' is very unexpected.")
 
-                
+    #end of tree loop    
 
-    #end of tree loop
-
-    ###Store the energy per layer###
+    ###Calibrate and store the energy per layer###
     for ireg in range(1,NREG+1):
         for il in range(1,NLAYERS+1):
+            en_depo_sig[ireg-1][il-1]        = f1*en_depo_sig[ireg-1][il-1] - f2
+            en_depo_bckg[ireg-1][il-1]       = f1*en_depo_bckg[ireg-1][il-1] - f2
+            avgnoise_depo_sig[ireg-1][il-1]  = f1*avgnoise_depo_sig[ireg-1][il-1] - f2
+            avgnoise_depo_bckg[ireg-1][il-1] = f1*avgnoise_depo_bckg[ireg-1][il-1] - f2
             if FLAGS.ncomponents == 1:
                 pass
             if FLAGS.ncomponents == 2:
@@ -251,8 +267,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
                 histos[hnames[6].format(ireg)].Fill(b, avgnoise_depo_sig[ireg-1][il-1])
                 histos[hnames[5].format(ireg)].Fill(b, en_depo_bckg[ireg-1][il-1])
                 histos[hnames[7].format(ireg)].Fill(b, avgnoise_depo_bckg[ireg-1][il-1])
-        
-        
+
     fIn.Close()
 
     if FLAGS.ncomponents == 1:
@@ -269,6 +284,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
                     [0.34,0.01,0.66,0.24],   #canvas0, pad10
                     [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
         cdims = [[2000,2000]]
+        picname = '1comp'
     else:
         pcoords = [[[0.01,0.76,0.33,0.99],   #canvas0, pad0
                     [0.34,0.76,0.66,0.99],   #canvas0, pad1
@@ -283,6 +299,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
                     [0.34,0.01,0.66,0.24],   #canvas0, pad10
                     [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
         cdims = [[1100,1400]]
+        picname = '2comp'
     
     correct_order = []
     for i in range(len(hnames)):
@@ -299,7 +316,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
         histos[-1].Divide(histos[8])
     elif FLAGS.ncomponents == 2:
         histos = histos[12:]
-    plotHistograms(histos, cdims, pcoords, 'pic')
+    plotHistograms(histos, cdims, pcoords, os.path.join(FLAGS.outpath,picname))
     fOut=TFile.Open('calib{}.root'.format(pfix),'RECREATE')
     for h in histos: 
         h.Write()
@@ -344,10 +361,16 @@ def plotHistograms(histos, cdims, pcoords, cname):
                 #              %(gaus.GetParameter(1),gaus.GetParError(1)))
                 #tex.DrawLatex(0.15,0.76,'#sigma=%3.3f#pm%3.3f'
                 #              %(gaus.GetParameter(2),gaus.GetParError(2)))
-                tex.DrawLatex(0.7,0.83,'|#eta| #leq 2.95')
+                if FLAGS.samples == 'inner':
+                    tex.DrawLatex(0.7,0.83,'|#eta| #leq '+str(FLAGS.etacut))
+                else:
+                    tex.DrawLatex(0.7,0.83,'|#eta| > '+str(FLAGS.etacut))
             else:
+                if FLAGS.samples == 'inner':
+                    tex.DrawLatex(0.7,0.83,'|#eta| > '+str(FLAGS.etacut))
+                else:
+                    tex.DrawLatex(0.7,0.83,'|#eta| #leq '+str(FLAGS.etacut))
                 tex.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation preliminary}')
-                tex.DrawLatex(0.7,0.83,'|#eta| > 2.95')
             tex.SetTextAlign(31)
 
             #cutoff = 50000
