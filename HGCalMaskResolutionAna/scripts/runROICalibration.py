@@ -68,7 +68,7 @@ def doL0L1Calibration(url, calib, nq=6):
     Performs the L0 (uniform eta response) and L1 (absolute scale) calibrations.
     """
     #derive L0 and L1 calibrations for 3 different signal regions
-    fIn=TFile.Open(url)
+    fIn=TFile.Open(url+'.root')
     data=fIn.Get('data')
     for ireg in [1,2,3]:
         x=getEnergiesForCalibration(data,ireg)
@@ -103,7 +103,7 @@ def doPUCalibration(url, calib, nq=10):
     Parametrizes the absolute shift in energy as function of the 
     average noise in the SR cone.
     """
-    fIn=TFile.Open(url)
+    fIn=TFile.Open(url+'.root')
     data=fIn.Get('data')
 
     for ireg in [1,2,3]:
@@ -130,7 +130,7 @@ def CalibratedResolution(url, calib, title, ncomponents=1, ncands=1):
     Applies the calibration to the photons and shows the energy resolution.
     """
     pfix=''.join(calib.keys())
-    fIn=TFile.Open(url)
+    fIn=TFile.Open(url+'.root')
     data=fIn.Get('data')
 
     histos=OrderedDict()

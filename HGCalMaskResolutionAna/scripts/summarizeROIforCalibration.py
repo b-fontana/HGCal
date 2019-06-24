@@ -15,16 +15,18 @@ def main():
     Creates a simple summary of the ROI for fast calibration.
     """
     NREG, NLAYERS = 3, 28
-    fOut = TFile(FLAGS.outpath, "RECREATE")
+    fOut = TFile(FLAGS.outpath+'.root', 'RECREATE')
     fOut.cd()
     varnames  = ['genen','geneta','genphi']
     for i in range(1,NREG+1):
-        for il in range(1,NLAYERS+1):
+        varnames += ['en_sr{}_ROI'.format(i), 
+                     'noise_sr{}_ROI'.format(i)]
+        for il in range(1,NLAYERS+1):        
             varnames += ['en_sr{}_layer{}'.format(i,il), 
                          'noise_sr{}_layer{}'.format(i,il)]
     output_tuple = TNtuple("data","data",":".join(varnames))
 
-    fIn = TFile.Open(FLAGS.noPUFile)
+    fIn = TFile.Open(FLAGS.noPUFile+'.root')
     t = fIn.Get('an_mask/data')
     for i in range(0,t.GetEntriesFast()):
         t.GetEntry(i)
@@ -46,17 +48,20 @@ def main():
             regIdx  = h.signalRegion()
             roiList[roiKey].addHit(en=en, layer=layer, isNoise=isNoise, regIdx=regIdx)
 
-        #mc truth
         for r in roiList:
             varvals = []
             genP4 = roiList[r].getGenP4()
             varvals += [genP4.E(),genP4.Eta(),genP4.Phi()]
             
             for ireg in range(1,NREG+1):
+                recP4 = roiList[r].getRecoP4(ireg)
+                noiseROI = roiList[r].getNoiseInROI(ireg)
+                varvals += [recP4.E(),noiseROI]
                 for il in range(1,NLAYERS+1):
-                    recP4    = roiList[r].getReconstructedP4(ireg, layer)
-                    noise    = roiList[r].getNoiseInRegion(ireg, layer)
-                    varvals += [recP4.E(),noise]
+                    recEn = roiList[r].getRecoEnergyDeposited(ireg, il)
+                    noiseLayer = roiList[r].getNoiseInLayer(ireg, il)
+                    varvals += [recEn, noiseLayer]
+            
             output_tuple.Fill(array.array("f", varvals))
 
     fOut.cd()
