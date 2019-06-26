@@ -5,10 +5,11 @@ from UserCode.HGCalMaskResolutionAna import Argparser
 from array import array as Carray
 from collections import OrderedDict
 
-from ROOT import TCanvas, TLatex, TFile, TMath, TH1F, TH2F, TLorentzVector, TProfile, TH1D
+from ROOT import TCanvas, TLatex, TFile, TMath, TH1F
+from ROOT import TLegend, TH2F, TLorentzVector, TProfile, TH1D
 from ROOT import gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskResolutionAna.RootTools import buildMedianProfile
-from UserCode.HGCalMaskVisualProd.RootUtils import RootPlotting
+from UserCode.HGCalMaskVisualProd.RootUtils import RootPlotting, RootHistograms
 
 parser = Argparser.Argparser()
 FLAGS = parser.get_flags()
@@ -59,7 +60,7 @@ def calibrateSpectrum(h,title,proc,func='pol1'):
     tex.DrawLatex(0.15,0.88,title)
     tex.SetTextAlign(31)
     tex.DrawLatex(0.97,0.96,proc)        
-    c.SaveAs(os.path.join(FLAGS.outpath,h.GetName()+title+'.png'))
+    #c.SaveAs(os.path.join(FLAGS.outpath,h.GetName()+title+'.png'))
     prof.Delete()        
     c.Delete()
     return calibGr
@@ -137,55 +138,78 @@ def plotHistograms(histos, cdims, pcoords, cname):
     if not isinstance(histos, list):
         raise TypeError('The histograms have to be passed in a list.,')
 
-    with RootPlotting(ncanvas=1, npads=len(histos), cdims=cdims, pcoords=pcoords) as plot:
-        for ih in range(len(histos)):
-            h = histos[ih]
-            #if h.Integral()==0.: continue
-            #h.Scale(1./h.Integral())
-            plot.plotHistogram(cpos=0, ppos=ih, h=h, draw_options='colz')
-            h.GetYaxis().SetRangeUser(0,h.GetMaximum()*1.2)
-            tex = TLatex()
-            tex.SetTextFont(42)
-            tex.SetTextSize(0.04)
-            tex.SetNDC()
-            if ih < 3 or (ih > 5 and ih < 8):
-                """
-                f = TF1('f1', 'gaus', 
-                        h.GetXaxis().GetXmin(), h.GetXaxis().GetXmax())
-                f.SetParameters(1., 0., .15)
-                f.SetParLimits(0, 0.001, 100.) #Constant 
-                f.SetParLimits(1, -.5, .5) #Mean
-                f.SetParLimits(2, 0.1, 10.) #Sigma
-                plot.fitHistogram(f, h)
-                gaus = h.GetListOfFunctions().At(0)
-                """
-                tex.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation preliminary}')
-                tex.DrawLatex(0.15,0.83,'SR{}'.format((ih%3)+1))
-                #tex.DrawLatex(0.15,0.80,'#mu=%3.3f#pm%3.3f'
-                #              %(gaus.GetParameter(1),gaus.GetParError(1)))
-                #tex.DrawLatex(0.15,0.76,'#sigma=%3.3f#pm%3.3f'
-                #              %(gaus.GetParameter(2),gaus.GetParError(2)))
+    npads = 6 if FLAGS.ncomponents == 2 else 12
+    hdiv = []
+    legends1 = [TLegend(0.56, 0.66, 0.86, 0.89) for  _ in range(3)]
+    legends2 = [TLegend(0.68, 0.75, 0.86, 0.89) for _ in range(3)]
+    with RootPlotting(ncanvas=1, npads=npads, cdims=cdims, pcoords=pcoords) as plot:
+        if FLAGS.ncomponents == 1:
+            titles = ['Resolution', 'Resolution', 'Nevents', 'Resolution / Nevents']
+            it = -1
+            for ih in range(len(histos)):
+                if ih%3==0: it += 1
+                h = histos[ih]
+                plot.plotHistogram(cpos=0, ppos=ih, h=h, 
+                                   title=titles[it], draw_options='colz')
+        elif FLAGS.ncomponents == 2:
+            linec = [4, 2, 3, 7]
+            for ih in range(NREG):
+                h = histos[ih]
+                plot.plotHistogram(cpos=0, ppos=ih, h=h, 
+                                   lw=3,mc=linec[0],msize=.5,lc=linec[0], draw_options='E')
+                plot.plotHistogram(cpos=0, ppos=ih, h=histos[ih+3], 
+                                   lw=3, mc=linec[1], msize=.5, lc=linec[1],
+                                   draw_options='same E')
+                plot.plotHistogram(cpos=0, ppos=ih, h=histos[ih+6], 
+                                   lw=3, mc=linec[2], msize=.5, lc=linec[2],
+                                   draw_options='same E')
+                plot.plotHistogram(cpos=0, ppos=ih, h=histos[ih+9], 
+                                   lw=3, mc=linec[3], msize=.5, lc=linec[3],
+                                   draw_options='same E')
+                tex = plot.setLatex()
                 if FLAGS.samples == 'inner':
-                    tex.DrawLatex(0.7,0.83,'|#eta| #leq '+str(FLAGS.etacut))
-                else:
-                    tex.DrawLatex(0.7,0.83,'|#eta| > '+str(FLAGS.etacut))
-            else:
-                if FLAGS.samples == 'inner':
-                    tex.DrawLatex(0.7,0.83,'|#eta| > '+str(FLAGS.etacut))
-                else:
-                    tex.DrawLatex(0.7,0.83,'|#eta| #leq '+str(FLAGS.etacut))
-                tex.DrawLatex(0.12,0.92,'#bf{CMS} #it{simulation preliminary}')
-            tex.SetTextAlign(31)
+                    tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
+                    legends1[ih].AddEntry(h, ' |#eta| < '+str(FLAGS.etacuts[0]), 'L')
+                    for ic in range(len(FLAGS.etacuts)-1):
+                        legends1[ih].AddEntry(histos[ih+3*(ic+1)], str(FLAGS.etacuts[ic])+' #leq |#eta| < '+str(FLAGS.etacuts[ic+1]), 'L')
+                elif FLAGS.samples == 'outer':
+                    tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
+                    legends1[ih].AddEntry(h, ' |#eta| #geq '+str(FLAGS.etacuts[-1]), 'L')
+                    for ic in range(len(FLAGS.etacuts)-1):
+                        legends1[ih].AddEntry(histos[ih+3*(ic+1)], str(FLAGS.etacuts[-(ic+2)])+' #leq |#eta| < '+str(FLAGS.etacuts[-(ic+1)]), 'L')
+                tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
+                tex.SetTextAlign(31)
+                legends1[ih].Draw()
 
-            #cutoff = 50000
-            #if h1.GetMaximum()>cutoff:
-            #    h1.SetMaximum(cutoff)
+                hdiv.append(histos[ih+3].Clone('weight1_sr{}'.format(ih+1)))
+                hdiv.append(histos[ih+6].Clone('weight2_sr{}'.format(ih+1)))
+                hdiv.append(histos[ih+7].Clone('weight3_sr{}'.format(ih+1)))
+                for idiv in range(len(FLAGS.etacuts)-1):
+                    hdiv[-3+idiv].Divide(h)
+                    extrastr = '' if idiv==0 else 'same'
+                    hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 4.)
+                    plot.plotHistogram(cpos=0, ppos=ih+3, h=hdiv[-3+idiv],
+                                       yaxis_title='Weight',
+                                       lw=3, mc=linec[idiv+1], msize=.5, lc=linec[idiv+1],
+                                       draw_options='HIST'+extrastr, copy=True)
+                tex = plot.setLatex()
+                if FLAGS.samples == 'inner':
+                    tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
+                elif FLAGS.samples == 'outer':
+                    tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
+                for iv in range(len(FLAGS.etacuts)-1):
+                    legends2[ih].AddEntry(hdiv[iv], 'weight'+str(iv+1), 'L')
+                tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
+                tex.SetTextAlign(31)
+                legends2[ih].Draw()
         plot.save(cpos=0, name=cname)
+    RootHistograms(histos).save('calibrated_showers')
+    RootHistograms(hdiv).save('calibrated_showers', mode='UPDATE')
 
 def main():
     gStyle.SetOptStat(0)
     gROOT.SetBatch(True)
-    #gStyle.SetPalette(kTemperatureMap)
+    gStyle.SetPalette(kTemperatureMap)
 
     fIn=TFile.Open(FLAGS.noPUFile+'.root')
     data=fIn.Get('data')
@@ -202,19 +226,14 @@ def main():
         with open('calib_pu{}.pck'.format(FLAGS.puTag),'w') as cachefile:
             pickle.dump(calib,cachefile, pickle.HIGHEST_PROTOCOL)
 
-
     histos=OrderedDict()
-    limsup, liminf = 4., -2.
+    limsup, liminf = 1, -1.5
     etabins = 12
-    etacut = FLAGS.etacut
-    en_depo_sig = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
-    en_depo_bckg = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
-    avgnoise_depo_sig = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
-    avgnoise_depo_bckg = [[0. for _ in range(NLAYERS)] for _ in range(NREG)] 
+    etacuts = FLAGS.etacuts
     if FLAGS.samples == 'inner':
-        phibins, etainf, etasup = 12, 2.75, 3.15
+        phibins, etainf, etasup = 12, 2.69, 3.51
     elif FLAGS.samples == 'outer':
-        phibins, etainf, etasup = 30, 1.42, 1.65
+        phibins, etainf, etasup = 30, 1.34, 1.68
     else:
         raise ValueError("Specify a valid value for the '--samples' option.")
 
@@ -222,7 +241,7 @@ def main():
         hn = ['den{}', 'den{}_2D_res', 'den{}_2D_events']
         for ireg in range(1,NREG+1):
             histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg),';#Delta E/E;PDF',
-                                                  50, liminf, limsup)
+                                                  100, liminf, limsup)
             histos[hn[1].format(ireg)] = TH2F(hn[1].format(ireg), ';|#eta|;#phi',
                                                   50, etainf, etasup,
                                                   12, -TMath.Pi(), TMath.Pi())
@@ -232,8 +251,10 @@ def main():
     elif FLAGS.ncomponents == 2:
         hn = ['res{}_signal',             'res{}_bckg', 
               'en{}_signal',              'en{}_bckg',
-              'en{}_per_layer_signal',    'en{}_per_layer_bckg',
-              'noise{}_per_layer_signal', 'noise{}_per_layer_bckg']
+              'en{}_per_layer_signal',    'en{}_per_layer_bckg1',
+              'en{}_per_layer_bckg2',     'en{}_per_layer_bckg3',
+              'noise{}_per_layer_signal', 'noise{}_per_layer_bckg1',
+              'noise{}_per_layer_bckg2',  'noise{}_per_layer_bckg3']
         for ireg in range(1,NREG+1):
             histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg), ';#Delta E/E;PDF',
                                               50, liminf, limsup)
@@ -245,33 +266,40 @@ def main():
                                               80, 0., 180.)
             bins = Carray('d', np.arange(0.5,29,1.))
             assert len(bins) == NLAYERS+1
-            histos[hn[4].format(ireg)] = TProfile(hn[4].format(ireg), ';Layer;Energy',
-                                                  NLAYERS, bins)
-            histos[hn[5].format(ireg)] = TProfile(hn[5].format(ireg), ';Layer;Energy',
-                                                  NLAYERS, bins)
-            histos[hn[6].format(ireg)] = TProfile(hn[6].format(ireg), ';Layer;Energy',
-                                                  NLAYERS, bins)
-            histos[hn[7].format(ireg)] = TProfile(hn[7].format(ireg), ';Layer;Energy',
-                                                  NLAYERS, bins)
+            strings = ';Layer;E_{reco} / E_{gen}'
+            for ih in range(4,len(hn)):
+                histos[hn[ih].format(ireg)] = TProfile(hn[ih].format(ireg), strings,
+                                                       NLAYERS, bins)
     else:
         raise ValueError('The number of components has to be 1 or 2.')
 
     for h in histos:
         histos[h].Sumw2()
-        histos[h].SetLineColor(1)
-        histos[h].SetMarkerColor(1)
         histos[h].SetMarkerStyle(20)
         histos[h].SetDirectory(0)
 
     for i in range(0,data.GetEntriesFast()):
         data.GetEntry(i)
         genen    = getattr(data,'genen')        
-        geneta   = getattr(data,'geneta')
+        geneta   = abs(getattr(data,'geneta'))
         genphi   = getattr(data,'genphi')
-        etacut_bool1 = ( (FLAGS.samples == 'inner' and abs(geneta) < etacut) or 
-                         (FLAGS.samples == 'outer' and abs(geneta) >= etacut) )
-        etacut_bool2 = ( (FLAGS.samples == 'inner' and abs(geneta) >= etacut) or
-                         (FLAGS.samples == 'outer' and abs(geneta) < etacut) )
+
+        if FLAGS.ncomponents == 2:
+            bool_sig = ( (FLAGS.samples == 'inner' and geneta < etacuts[0]) or 
+                         (FLAGS.samples == 'outer' and geneta >= etacuts[-1]) )
+            bools_bckg = []
+            for ic in range(len(etacuts)-1):
+                bools_bckg.append((FLAGS.samples=='inner' 
+                                   and geneta >= etacuts[ic] 
+                                   and geneta < etacuts[ic+1])
+                                  or (FLAGS.samples == 'outer' 
+                                      and geneta < etacuts[-(ic+1)] 
+                                      and geneta >= etacuts[-(ic+2)]) )
+
+            check_bools = int(bool_sig)
+            for ic in range(len(etacuts)-1):
+                check_bools += int(bools_bckg[ic])
+            assert check_bools == 1
 
         for ireg in range(1,NREG+1):
             recen = getattr(data,'en_sr{}_ROI'.format(ireg))
@@ -280,82 +308,50 @@ def main():
             #Calibration factors. f2 is used for PU.
             f1, f2 = 1., 0.
             if 'L0' in calib:
-                f1 = calib['L0'][ireg].Eval(abs(geneta))+1.0
+                f1 /= calib['L0'][ireg].Eval(geneta)+1.0
                 if 'L1' in calib:
-                    f1 /= calib['L1'][ireg].Eval(recen)+1.0    
-            if 'L2' in calib and ireg in calib['L2']:
-                f2 = calib['L2'][ireg].Eval(avgnoise)
-
+                    f1 /= calib['L1'][ireg].Eval(f1*recen)+1.0    
+                    if 'L2' in calib and ireg in calib['L2']:
+                        f2 = calib['L2'][ireg].Eval(avgnoise)
             recen = f1*recen - f2
             deltaE = recen/genen-1.
 
             ###Store the energy resolution###
             if FLAGS.ncomponents == 1:
-                histos[hn[0].format(ireg)].Fill(deltaE)
-                histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
-                histos[hn[2].format(ireg)].Fill(geneta, genphi)
+                if geneta < 2.9:
+                    histos[hn[0].format(ireg)].Fill(deltaE)
+                    histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
+                    histos[hn[2].format(ireg)].Fill(geneta, genphi)
             elif FLAGS.ncomponents == 2:
-                if etacut_bool1:
+                if bool_sig:
                     histos[hn[0].format(ireg)].Fill(deltaE)
                     histos[hn[2].format(ireg)].Fill(recen)
-                elif etacut_bool2:
+                else:
                     histos[hn[1].format(ireg)].Fill(deltaE)
                     histos[hn[3].format(ireg)].Fill(recen)
-                else:
-                    raise ValueError("This value of 'geneta' is very unexpected."
-                                     "Check the above conditions.")
 
-                ###Calculate the energy per layer###
+                ###Calculate and calibrate the energy per layer###
+                v_tot = 0
                 for il in range(1,NLAYERS+1):
-                    #'signal-like': complete showers
-                    if etacut_bool1:
-                        en_depo_sig[ireg-1][il-1] += getattr(data,'en_sr{}_layer{}'
-                                                            .format(ireg,il))
-                        avgnoise_depo_sig[ireg-1][il-1] += getattr(data,'noise_sr3_layer{}'
-                                                            .format(il))*A[ireg-1]/A[2]
-                    elif etacut_bool2:
-                        en_depo_bckg[ireg-1][il-1] += getattr(data,'en_sr{}_layer{}'
-                                                              .format(ireg,il))
-                        avgnoise_depo_bckg[ireg-1][il-1] += getattr(data,'noise_sr3_layer{}'
-                                                              .format(il))*A[ireg-1]/A[2]
+                    #if: 'signal-like': complete showers
+                    #elif: 'background-like': incomplete showers
+                    b = histos[hn[4].format(ireg)].FindBin(il)
+                    v_tot += f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
+                    if bool_sig:
+                        v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
+                        histos[hn[4].format(ireg)].Fill(b,v/genen)
+                        v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
+                             *A[ireg-1]/A[2] - f2)
+                        histos[hn[8].format(ireg)].Fill(b,v/genen)
                     else:
-                        raise ValueError("This value of 'geneta' is very unexpected.")
-
+                        for w in range(len(etacuts)-1):
+                            if bools_bckg[w]:      
+                                v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
+                                histos[hn[5+w].format(ireg)].Fill(b,v/genen)
+                                v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
+                                     *A[ireg-1]/A[2] - f2)
+                                histos[hn[9+w].format(ireg)].Fill(b,v/genen)
     #end of tree loop    
-
-    ###Calibrate and store the energy per layer###
-    for ireg in range(1,NREG+1):
-        for il in range(1,NLAYERS+1):
-            en_depo_sig[ireg-1][il-1]        = f1*en_depo_sig[ireg-1][il-1] - f2
-            en_depo_bckg[ireg-1][il-1]       = f1*en_depo_bckg[ireg-1][il-1] - f2
-            avgnoise_depo_sig[ireg-1][il-1]  = f1*avgnoise_depo_sig[ireg-1][il-1] - f2
-            avgnoise_depo_bckg[ireg-1][il-1] = f1*avgnoise_depo_bckg[ireg-1][il-1] - f2
-            if FLAGS.ncomponents == 1:
-                pass
-            if FLAGS.ncomponents == 2:
-                b = histos[hn[4].format(ireg)].FindBin(il)
-
-                en_depo_sig_tot = [en_depo_sig[ireg-1][x] for x in range(NLAYERS)]
-                if not all(y==0 for y in en_depo_sig_tot):
-                    histos[hn[4].format(ireg)].Fill(b, 
-                                en_depo_sig[ireg-1][il-1] / sum(en_depo_sig_tot))
-
-                en_depo_bckg_tot = [en_depo_bckg[ireg-1][x] for x in range(NLAYERS)]
-                if not all(y==0 for y in en_depo_bckg_tot):
-                    histos[hn[5].format(ireg)].Fill(b, 
-                                en_depo_bckg[ireg-1][il-1] / sum(en_depo_bckg_tot))
-
-                avgnoise_depo_sig_tot = [avgnoise_depo_sig[ireg-1][x] 
-                                         for x in range(NLAYERS)]
-                if not all(y==0 for y in avgnoise_depo_sig_tot):
-                    histos[hn[6].format(ireg)].Fill(b, 
-                            avgnoise_depo_sig[ireg-1][il-1] / sum(avgnoise_depo_sig_tot))
-
-                avgnoise_depo_bckg_tot = [avgnoise_depo_bckg[ireg-1][x] 
-                                          for x in range(NLAYERS)]
-                if not all(y==0 for y in avgnoise_depo_bckg_tot):
-                    histos[hn[7].format(ireg)].Fill(b, 
-                            avgnoise_depo_bckg[ireg-1][il-1] / sum(avgnoise_depo_bckg_tot))
     fIn.Close()
 
     if FLAGS.ncomponents == 1:
@@ -372,22 +368,16 @@ def main():
                     [0.34,0.01,0.66,0.24],   #canvas0, pad10
                     [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
         cdims = [[2000,2000]]
-        picname = '1comp'
+        picname = '1comp_'+FLAGS.samples
     else:
-        pcoords = [[[0.01,0.76,0.33,0.99],   #canvas0, pad0
-                    [0.34,0.76,0.66,0.99],   #canvas0, pad1
-                    [0.67,0.76,0.99,0.99],   #canvas0, pad2
-                    [0.01,0.51,0.33,0.74],   #canvas0, pad3
-                    [0.34,0.51,0.66,0.74],   #canvas0, pad4
-                    [0.67,0.51,0.99,0.74],   #canvas0, pad5
-                    [0.01,0.26,0.33,0.49],   #canvas0, pad6
-                    [0.34,0.26,0.66,0.49],   #canvas0, pad7
-                    [0.67,0.26,0.99,0.49],   #canvas0, pad8
-                    [0.01,0.01,0.33,0.24],   #canvas0, pad9
-                    [0.34,0.01,0.66,0.24],   #canvas0, pad10
-                    [0.67,0.01,0.99,0.24]]]  #canvas0, pad11
-        cdims = [[1100,1400]]
-        picname = '2comp'
+        pcoords = [[[0.01,0.505,0.33,0.99],   #canvas0, pad0
+                    [0.34,0.505,0.66,0.99],   #canvas0, pad1
+                    [0.67,0.505,0.99,0.99],   #canvas0, pad2
+                    [0.01,0.01,0.33,0.495],   #canvas0, pad3
+                    [0.34,0.01,0.66,0.495],   #canvas0, pad4
+                    [0.67,0.01,0.99,0.495]]]  #canvas0, pad5
+        cdims = [[2000,1200]]
+        picname = '2comp_'+FLAGS.samples
     
     correct_order = []
     for i in range(len(hn)):
@@ -403,7 +393,7 @@ def main():
         histos[-2].Divide(histos[7])
         histos[-1].Divide(histos[8])
     elif FLAGS.ncomponents == 2:
-        histos = histos[12:]
+        histos = histos[12:24]
     plotHistograms(histos, cdims, pcoords, os.path.join(FLAGS.outpath,picname))
     fOut=TFile.Open('calib{}.root'.format(''.join(calib.keys())),'RECREATE')
     for h in histos: 

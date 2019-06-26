@@ -48,6 +48,20 @@ def main():
             regIdx  = h.signalRegion()
             roiList[roiKey].addHit(en=en, layer=layer, isNoise=isNoise, regIdx=regIdx)
 
+        """
+        CHECK
+        import numpy as np
+        all1 = [roiList[0].getRecoEnergyDeposited(1,x) for x in range(1,29)]
+        if not (np.isclose(roiList[0].getRecoP4(1).E(),sum(all1))):
+            print(roiList[0].getRecoP4(1).E(), sum(all1))
+        all2 = [roiList[0].getRecoEnergyDeposited(2,x) for x in range(1,29)]
+        if not (np.isclose(roiList[0].getRecoP4(2).E(),sum(all2))):
+            print(roiList[0].getRecoP4(2).E(), sum(all2))
+        all3 = [roiList[0].getRecoEnergyDeposited(3,x) for x in range(1,29)]
+        if not (np.isclose(roiList[0].getRecoP4(3).E(), sum(all3))):
+            print(roiList[0].getRecoP4(3).E(), sum(all3))
+        continue
+        """
         for r in roiList:
             varvals = []
             genP4 = roiList[r].getGenP4()
@@ -63,7 +77,7 @@ def main():
                     varvals += [recEn, noiseLayer]
             
             output_tuple.Fill(array.array("f", varvals))
-
+        
     fOut.cd()
     output_tuple.Write()
     fOut.Close()

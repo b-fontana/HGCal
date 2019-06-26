@@ -70,6 +70,7 @@ GlobalPoint HGCalMaskResolutionAna::projectHitPositionAt(float z,float eta,float
 //
 void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::EventSetup &iSetup)
 {
+  unsigned int nparticles = 2;
   recHitTools_.getEventSetup(iSetup);
   edm::ESHandle<HGCalGeometry> geomHandle;
   iSetup.get<IdealGeometryRecord>().get("HGCalEESensitive",geomHandle);
@@ -99,18 +100,20 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     //if(p.p4().Pz()<0.) continue; 
     if(p.pdgId()!=22) continue; //photon
     //if(!p.isPromptFinalState()) continue;    
-    //if(fabs(p.eta())<1.5 || fabs(p.eta())>2.9) continue;
-    SlimmedROI photon(p.pt(),p.eta(),p.phi(),p.mass(),22);
+    SlimmedROI photon(p.pt(),p.eta(),p.phi(),p.mass(),p.pdgId());
     slimmedROIs_->push_back(photon);
     selGenPartIdx.push_back(i);
   }
-  if(slimmedROIs_->size()!=1) return;
+  if(slimmedROIs_->size()!=nparticles) {
+    std::cout << "Does not have two photons!" << std::endl;
+    return;
+  }
 
   //TLorentzVector mrr(slimmedROIs_->at(0).p4()+slimmedROIs_->at(1).p4());
   //if(fabs(mrr.M()-125)>5) return;
 
   //shift ROIs in phi to create control ROIs for noise/pileup control
-  for(size_t ir=0; ir<1; ir++) {
+  for(size_t ir=0; ir<nparticles; ir++) {
     TLorentzVector p4=slimmedROIs_->at(ir).p4();
     float dphi=2.*TMath::Pi()/6.;
     for(int iphi=1; iphi<=5; iphi++) {
@@ -119,6 +122,7 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
       slimmedROIs_->push_back(noise);
     }
   }
+
   //check that particles reached HGCAL
   //edm::Handle<std::vector<SimTrack>> simTracksHandle;
   //iEvent.getByToken(simTracks_, simTracksHandle);
@@ -151,10 +155,13 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     int matchedROIidx(-1), signalRegion(-1);
     for(size_t ir=0; ir<slimmedROIs_->size(); ir++){
       float eta=slimmedROIs_->at(ir).eta();
+      if(eta*z < 0)
+	continue;
       float phi=slimmedROIs_->at(ir).phi();      
       GlobalPoint xyzExp=projectHitPositionAt(z-genVertex_->Z(),eta,phi);      
       TVector2 xyExp(xyzExp.x(),xyzExp.y());
       float d=(xyExp-xy).Mod();
+      //std::cout << "IR:" << ir << " DISTANCE: " << d << "Z: " << z << " ETA: " << eta << "  " << slimmedROIs_->size() << std::endl;
 
       //get closest detid if required
       if(byClosest_) {
@@ -164,12 +171,15 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
         d=(xyClosest-xy).Mod();
       }
 
-      if(d>5.3) continue;
+      if(d>5.3) 
+	continue;
       matchedROIidx=ir; 
       signalRegion=3;
-      if(d<=2.6) signalRegion=2;
-      if(d<=1.3) signalRegion=1;
-      break;
+      if(d<=2.6) 
+	signalRegion=2;
+      if(d<=1.3) 
+	signalRegion=1;
+      //break;
     }
     if(matchedROIidx<0) {
       nUnmatched++;
@@ -182,9 +192,9 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     float en = h.energy();
     double mip = dEdXWeights_[layer] * 0.001;  // convert in GeV
     size_t thickCorrIdx(0);
-    if (thickness > 199. && thickness < 201) 
+    if (thickness > 199. && thickness < 201.) 
       thickCorrIdx = 1;
-    if (thickness > 299. && thickness < 301) 
+    if (thickness > 299. && thickness < 301.) 
       thickCorrIdx = 2;
     mip /= thicknessCorrection_[thickCorrIdx];
     float en_mips=en/mip;
@@ -199,7 +209,6 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
 
   tree_->Fill();
 }
-
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(HGCalMaskResolutionAna);
