@@ -9,7 +9,8 @@ from ROOT import TCanvas, TLatex, TFile, TMath, TH1F
 from ROOT import TLegend, TH2F, TLorentzVector, TProfile, TH1D
 from ROOT import gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskResolutionAna.RootTools import buildMedianProfile
-from UserCode.HGCalMaskVisualProd.RootUtils import RootPlotting, RootHistograms
+from UserCode.HGCalMaskVisualProd.RootPlotting import RootPlotting
+from UserCode.HGCalMaskVisualProd.RootObjects import RootHistograms
 
 parser = Argparser.Argparser()
 FLAGS = parser.get_flags()
@@ -151,6 +152,11 @@ def plotHistograms(histos, cdims, pcoords, cname):
                 h = histos[ih]
                 plot.plotHistogram(cpos=0, ppos=ih, h=h, 
                                    title=titles[it], draw_options='colz')
+                tex = plot.setLatex(ts=0.06)
+                if FLAGS.samples == 'inner':
+                    tex.DrawLatex(0.68,0.82,' |#eta| < '+str(FLAGS.etacuts[-2]))
+                elif FLAGS.samples == 'outer':
+                    tex.DrawLatex(0.68,0.92,' |#eta| > '+str(FLAGS.etacuts[-2]))
         elif FLAGS.ncomponents == 2:
             linec = [4, 2, 3, 7]
             for ih in range(NREG):
@@ -183,11 +189,11 @@ def plotHistograms(histos, cdims, pcoords, cname):
 
                 hdiv.append(histos[ih+3].Clone('weight1_sr{}'.format(ih+1)))
                 hdiv.append(histos[ih+6].Clone('weight2_sr{}'.format(ih+1)))
-                hdiv.append(histos[ih+7].Clone('weight3_sr{}'.format(ih+1)))
+                hdiv.append(histos[ih+9].Clone('weight3_sr{}'.format(ih+1)))
                 for idiv in range(len(FLAGS.etacuts)-1):
                     hdiv[-3+idiv].Divide(h)
                     extrastr = '' if idiv==0 else 'same'
-                    hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 4.)
+                    hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 2.)
                     plot.plotHistogram(cpos=0, ppos=ih+3, h=hdiv[-3+idiv],
                                        yaxis_title='Weight',
                                        lw=3, mc=linec[idiv+1], msize=.5, lc=linec[idiv+1],
@@ -203,8 +209,9 @@ def plotHistograms(histos, cdims, pcoords, cname):
                 tex.SetTextAlign(31)
                 legends2[ih].Draw()
         plot.save(cpos=0, name=cname)
-    RootHistograms(histos).save('calibrated_showers')
-    RootHistograms(hdiv).save('calibrated_showers', mode='UPDATE')
+    save_str = 'calibshowers_mask'+str(FLAGS.mask)+'_'+FLAGS.samples
+    RootHistograms(histos).save(save_str)
+    RootHistograms(hdiv).save(save_str, mode='UPDATE')
 
 def main():
     gStyle.SetOptStat(0)
@@ -227,7 +234,7 @@ def main():
             pickle.dump(calib,cachefile, pickle.HIGHEST_PROTOCOL)
 
     histos=OrderedDict()
-    limsup, liminf = 1, -1.5
+    limsup, liminf = .6, -1.1
     etabins = 12
     etacuts = FLAGS.etacuts
     if FLAGS.samples == 'inner':
@@ -318,7 +325,7 @@ def main():
 
             ###Store the energy resolution###
             if FLAGS.ncomponents == 1:
-                if geneta < 2.9:
+                if geneta < FLAGS.etacuts[-2]:
                     histos[hn[0].format(ireg)].Fill(deltaE)
                     histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
                     histos[hn[2].format(ireg)].Fill(geneta, genphi)
@@ -331,12 +338,10 @@ def main():
                     histos[hn[3].format(ireg)].Fill(recen)
 
                 ###Calculate and calibrate the energy per layer###
-                v_tot = 0
                 for il in range(1,NLAYERS+1):
                     #if: 'signal-like': complete showers
                     #elif: 'background-like': incomplete showers
                     b = histos[hn[4].format(ireg)].FindBin(il)
-                    v_tot += f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
                     if bool_sig:
                         v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
                         histos[hn[4].format(ireg)].Fill(b,v/genen)
