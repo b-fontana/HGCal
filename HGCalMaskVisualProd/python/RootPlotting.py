@@ -1,6 +1,6 @@
 import abc
 from array import array as Carray
-from ROOT import TFile, TCanvas, TPad, TMath, TStyle, TExec, TLatex, TGraph
+from ROOT import TFile, TCanvas, TPad, TMath, TStyle, TExec, TLatex, TGraph, TF1
 from ROOT import gSystem, gDirectory, gStyle, kBlue
 
 class RootPlotting:
@@ -44,7 +44,6 @@ class RootPlotting:
             for _ic in range(ncanvas):
                 self._c.append(TCanvas('c'+str(_ic), 'c'+str(_ic), 200, 10, 
                                        cdims[_ic][0], cdims[_ic][1]))
-            print(self._c)
 
         self._p = [[] for _ in range(ncanvas)]
         if pcoords == None:
@@ -183,11 +182,33 @@ class RootPlotting:
         else:
             g.Draw(draw_options)
 
-    def fitHistogram(self, f, h):
+    def fitHistogram(self, h, f=None, fname='crystalball', frange=(-5.,5.), tex=None):
         """
-        Fits TF1 'f' to histogram 'h'.
+        Fits TF1 'f' to histogram 'h'. 
+        If f is 'None', it uses one of the provided functions:
+        -> crystalball
+        -> gaussian
         """
+        if f == None:
+            f = TF1("f", fname, frange[0], frange[1])
+            if fname == 'crystalball':
+                f.SetParameters(1., 0., .3, 1., 5.)
+                f.SetParLimits(0, 1., 10000)
+                f.SetParLimits(1, -.3, .3)
+                f.SetParLimits(2, 0.00001, 1.)
+                f.SetParLimits(3, 0.00001, 5.)
+                f.SetParLimits(4, 0.00001, 5.)
+                #f.FixParameter(4, 3.)
+            elif fname == 'gaus':
+                f.SetParameters(1., 0., 1.)
+            else:
+                raise ValueError('The specified function is not supported.')
         h.Fit(f.GetName(), 'M+')
+        if tex != 'None':
+            tex.DrawLatex(0.15,0.84, '#mu={}#pm{}'
+                          .format(round(f.GetParameter(1),4), round(f.GetParError(1),4)))
+            tex.DrawLatex(0.15,0.8, '#sigma={}#pm{}'
+                          .format(round(f.GetParameter(2),4), round(f.GetParError(2),4)))
 
     def save(self, cpos, name):
         self._c[cpos].SaveAs(name+'.png')
