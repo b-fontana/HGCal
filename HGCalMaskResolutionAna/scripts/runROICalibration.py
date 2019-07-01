@@ -140,7 +140,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
     if not isinstance(histos, list):
         raise TypeError('The histograms have to be passed in a list.,')
 
-    npads = 6 if FLAGS.mode == 2 else 12
+    npads = 12 if FLAGS.mode == 2 else 12
     hdiv = []
     legends1 = [TLegend(0.56, 0.66, 0.86, 0.89) for  _ in range(3)]
     legends2 = [TLegend(0.68, 0.75, 0.86, 0.89) for _ in range(3)]
@@ -155,37 +155,41 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                    title=titles[it], draw_options='colz')
                 tex = plot.setLatex(ts=0.04)
                 if FLAGS.samples == 'inner':
-                    tex.DrawLatex(0.75,0.93,' |#eta| < '+str(1.5))
+                    tex.DrawLatex(0.75,0.93,' |#eta| < '+str(FLAGS.mingeneta))
                 elif FLAGS.samples == 'outer':
-                    tex.DrawLatex(0.75,0.93,' |#eta| > '+str(3.))
+                    tex.DrawLatex(0.75,0.93,' |#eta| > '+str(FLAGS.maxgeneta))
 
         elif FLAGS.mode == 2:
             for ih in range(NREG):
                 if FLAGS.apply_weights:
-                    plot.plotHistogram(cpos=0, ppos=ih, h=histos[ih], 
-                                       lw=3,mc=4,msize=.5,lc=4, 
-                                       draw_options='E')
-                    tex = plot.setLatex()
-                    plot.fitHistogram(h=histos[ih], fname='crystalball', frange=(-1.,1.),
-                                      tex=tex)
-                    if FLAGS.samples == 'inner':
-                        tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
-                    elif FLAGS.samples == 'outer':
-                        tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
-                    tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
-                    tex.SetTextAlign(31)
-                    plot.plotHistogram(cpos=0, ppos=ih+3, h=histos[ih+3], 
-                                       lw=3,mc=4,msize=.5,lc=4,
-                                       draw_options='E')
-                    tex = plot.setLatex()
-                    plot.fitHistogram(h=histos[ih+3], fname='crystalball', frange=(-1.,1.),
-                                      tex=tex)
-                    if FLAGS.samples == 'inner':
-                        tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
-                    elif FLAGS.samples == 'outer':
-                        tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
-                    tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
-                    tex.SetTextAlign(31)
+                    for ixx in range(4):
+                        idx = ih+NREG*ixx
+                        plot.plotHistogram(cpos=0, ppos=idx, h=histos[idx], 
+                                           lw=3,mc=4,msize=.5,lc=4, 
+                                           draw_options='E')
+                        tex = plot.setLatex()
+                        plot.fitHistogram(h=histos[idx], fname='crystalball', 
+                                          frange=(-1.,1.), tex=tex)
+                        if ixx < 2:
+                            if FLAGS.samples == 'inner':
+                                tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'
+                                              .format((ih%3)+1))
+                                tex.DrawLatex(0.7,0.84,' |#eta| < '+str(FLAGS.maxgeneta))
+                            elif FLAGS.samples == 'outer':
+                                tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'
+                                              .format((ih%3)+1))
+                                tex.DrawLatex(0.7,0.84,' |#eta| > '+str(FLAGS.mingeneta))
+                        else:
+                            if FLAGS.samples == 'inner':
+                                tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'
+                                              .format((ih%3)+1))
+                                tex.DrawLatex(0.65,0.84,str(FLAGS.maxgeneta)+'< |#eta| < '+str(FLAGS.etacuts[-2]))
+                            elif FLAGS.samples == 'outer':
+                                tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'
+                                              .format((ih%3)+1))
+                                tex.DrawLatex(0.65,0.84,str(FLAGS.etacuts[0])+' |#eta| > '+str(FLAGS.mingeneta))
+                        tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
+                        tex.SetTextAlign(31)
 
                 elif not FLAGS.apply_weights:
                     linec = [4, 2, 3, 7]
@@ -294,7 +298,6 @@ def main():
             pickle.dump(calib,cachefile, pickle.HIGHEST_PROTOCOL)
 
     histos=OrderedDict()
-    limsup, liminf = .6, -1.1
     etabins = 12
     etacuts = FLAGS.etacuts
     if FLAGS.samples == 'inner':
@@ -316,22 +319,25 @@ def main():
                                                   50, etainf, etasup,
                                                   12, -TMath.Pi(), TMath.Pi())
     elif FLAGS.mode == 2:
-        hn = ['res{}',                    'en{}', 
+        hn = ['res_complete_before{}',    'res_complete_after{}', 
+              'res_incomplete_before{}',  'res_incomplete_after{}',
               'en{}_per_layer_signal',    'en{}_per_layer_bckg1',
               'en{}_per_layer_bckg2',     'en{}_per_layer_bckg3',
               'noise{}_per_layer_signal', 'noise{}_per_layer_bckg1',
               'noise{}_per_layer_bckg2',  'noise{}_per_layer_bckg3']
         for ireg in range(1,NREG+1):
             histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg), ';#Delta E/E_{gen};PDF',
-                                              50, liminf, limsup)
+                                              100, -1.05, .8)
             histos[hn[1].format(ireg)] = TH1F(hn[1].format(ireg), ';#Delta E/E_{gen};PDF',
-                                              50, liminf, limsup)
-            #histos[hn[1].format(ireg)] = TH1F(hn[1].format(ireg), ';E_{reco};PDF',
-            #                                  80, 0., 145.)
+                                              100, -1.05, .8)
+            histos[hn[2].format(ireg)] = TH1F(hn[2].format(ireg), ';#Delta E/E_{gen};PDF',
+                                              100, -1.05, .8)
+            histos[hn[3].format(ireg)] = TH1F(hn[3].format(ireg), ';#Delta E/E_{gen};PDF',
+                                              100, -1.05, .8)
             bins = Carray('d', np.arange(0.5,29,1.))
             assert len(bins) == NLAYERS+1
             strings = ';Layer;E_{reco} / E_{gen}'
-            for ih in range(2,len(hn)):
+            for ih in range(4,len(hn)):
                 histos[hn[ih].format(ireg)] = TProfile(hn[ih].format(ireg), strings,
                                                        NLAYERS, bins)
     else:
@@ -379,9 +385,11 @@ def main():
             recen = f1*recen - f2
             deltaE = recen/genen-1.
             ###Store the energy resolution###
-            sc = (3., 1.5)
+            sc = (FLAGS.maxgeneta, FLAGS.mingeneta)
             singlecut = ( geneta < sc[0] if FLAGS.samples == 'inner' 
                           else geneta > sc[1] )
+            insidecut = ( geneta < FLAGS.etacuts[-2] if FLAGS.samples == 'inner' 
+                          else geneta > FLAGS.etacuts[0] )
 
             if FLAGS.mode == 1:
                 if singlecut:
@@ -401,20 +409,20 @@ def main():
                         else:
                             weight_limit = il < boundaries[ireg-1] 
                     
-                    b = histos[hn[2].format(ireg)].FindBin(il)
+                    b = histos[hn[4].format(ireg)].FindBin(il)
                     if bool_sig:
                         v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
-                        histos[hn[2].format(ireg)].Fill(b,v/genen)
+                        histos[hn[4].format(ireg)].Fill(b,v/genen)
                         if FLAGS.apply_weights:
                             recen_corr += v
                         v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
                              *A[ireg-1]/A[2] - f2)
-                        histos[hn[6].format(ireg)].Fill(b,v/genen)
+                        histos[hn[8].format(ireg)].Fill(b,v/genen)
                     else:
                         for w in range(len(etacuts)-1):
                             if bools_bckg[w]:      
                                 v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
-                                histos[hn[3+w].format(ireg)].Fill(b,v/genen)
+                                histos[hn[5+w].format(ireg)].Fill(b,v/genen)
                                 if ( FLAGS.apply_weights and 
                                      weights[ireg-1][w][il-1]!=0 and
                                      weight_limit):
@@ -423,12 +431,18 @@ def main():
                                     #weight_graphs[ireg][il].Eval(geneta, spline=0, 'S')
                                 v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
                                      *A[ireg-1]/A[2] - f2)
-                                histos[hn[7+w].format(ireg)].Fill(b,v/genen)
-                if singlecut and FLAGS.apply_weights:
-                    recen_corr *= (1 / (1-lowstats_factors[ireg-1]) )
-                    deltaE_corr = recen_corr/genen-1.
-                    histos[hn[0].format(ireg)].Fill(deltaE)
-                    histos[hn[1].format(ireg)].Fill(deltaE_corr)
+                                histos[hn[9+w].format(ireg)].Fill(b,v/genen)
+
+                if FLAGS.apply_weights:
+                    if singlecut: #complete shower
+                        deltaE_corr = recen_corr/genen-1.
+                        histos[hn[0].format(ireg)].Fill(deltaE)
+                        histos[hn[1].format(ireg)].Fill(deltaE_corr)
+                    elif not singlecut and insidecut:
+                        recen_corr *= (1 / (1-lowstats_factors[ireg-1]) )
+                        deltaE_corr = recen_corr/genen-1.
+                        histos[hn[2].format(ireg)].Fill(deltaE)
+                        histos[hn[3].format(ireg)].Fill(deltaE_corr)
 
     #end of tree loop    
     fIn.Close()
@@ -451,13 +465,19 @@ def main():
         if FLAGS.apply_weights:
             picname += '_corrected' 
     else:
-        pcoords = [[[0.01,0.505,0.33,0.99],   #canvas0, pad0
-                    [0.34,0.505,0.66,0.99],   #canvas0, pad1
-                    [0.67,0.505,0.99,0.99],   #canvas0, pad2
-                    [0.01,0.01,0.33,0.495],   #canvas0, pad3
-                    [0.34,0.01,0.66,0.495],   #canvas0, pad4
-                    [0.67,0.01,0.99,0.495]]]  #canvas0, pad5
-        cdims = [[2000,1200]]
+        pcoords = [[[0.01,0.755,0.33,0.99],   #canvas0, pad0
+                    [0.34,0.755,0.66,0.99],   #canvas0, pad1
+                    [0.67,0.755,0.99,0.99],
+                    [0.01,0.505,0.33,0.745],   #canvas0, pad0
+                    [0.34,0.505,0.66,0.745],   #canvas0, pad1
+                    [0.67,0.505,0.99,0.745],   #canvas0, pad2
+                    [0.01,0.255,0.33,0.495],   #canvas0, pad0
+                    [0.34,0.255,0.66,0.495],   #canvas0, pad1
+                    [0.67,0.255,0.99,0.495],
+                    [0.01,0.005,0.33,0.245],   #canvas0, pad3
+                    [0.34,0.005,0.66,0.245],   #canvas0, pad4
+                    [0.67,0.005,0.99,0.245]]]  #canvas0, pad5
+        cdims = [[2000,2400]]
         picname = '2comp_'+FLAGS.samples
         if FLAGS.apply_weights:
             picname += '_corrected' 
@@ -477,9 +497,9 @@ def main():
         histos[-1].Divide(histos[8])
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
-            histos = histos[:6]
+            histos = histos[:12]
         else:
-            histos = histos[6:]
+            histos = histos[12:]
     plotHistograms(histos, cdims, pcoords, 
                    os.path.join(FLAGS.outpath,picname))
     fOut=TFile.Open('calib{}.root'.format(''.join(calib.keys())),'RECREATE')
