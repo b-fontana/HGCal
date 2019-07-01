@@ -153,11 +153,11 @@ def plotHistograms(histos, cdims, pcoords, cname):
                 h = histos[ih]
                 plot.plotHistogram(cpos=0, ppos=ih, h=h, 
                                    title=titles[it], draw_options='colz')
-                tex = plot.setLatex(ts=0.06)
+                tex = plot.setLatex(ts=0.04)
                 if FLAGS.samples == 'inner':
-                    tex.DrawLatex(0.68,0.82,' |#eta| < '+str(FLAGS.etacuts[-2]))
+                    tex.DrawLatex(0.75,0.93,' |#eta| < '+str(1.5))
                 elif FLAGS.samples == 'outer':
-                    tex.DrawLatex(0.68,0.92,' |#eta| > '+str(FLAGS.etacuts[-2]))
+                    tex.DrawLatex(0.75,0.93,' |#eta| > '+str(3.))
 
         elif FLAGS.mode == 2:
             for ih in range(NREG):
@@ -254,6 +254,13 @@ def plotHistograms(histos, cdims, pcoords, cname):
         RootHistograms(histos).save(save_str)
         RootHistograms(hdiv).save(save_str, mode='UPDATE')
 
+def valAverage(l):
+    l = np.array(l)
+    l2 = np.roll(l, shift=-1)[:-1]
+    l = l[:-1]
+    l += (l2 - l) / 2
+    return l
+
 def main():
     gStyle.SetOptStat(0)
     gROOT.SetBatch(True)
@@ -262,9 +269,14 @@ def main():
     if FLAGS.apply_weights:
         calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
                              FLAGS.samples+'_mode2')
-        showercorr = IncompleteShowersCorrection(calibshowers_str+'.root')
+        showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
+                                                 valAverage(FLAGS.etacuts))
         weights = showercorr.getCorrectionWeights()
-        lowstats_factors = showercorr.calculateLowStatisticsFactor([8., 8., 8])
+        boundaries = [8., 8., 8.]
+        corr_mode = 'right' if FLAGS.samples == 'outer' else 'left'
+        lowstats_factors = showercorr.calculateLowStatisticsFactor(boundaries, corr_mode)
+        weights_graphs = [showercorr.buildCorrectionWeightsGraphs(region=i+1)
+                          for i in range(NREG)]
 
     fIn=TFile.Open(FLAGS.noPUFile+'.root')
     data=fIn.Get('data')
@@ -347,7 +359,6 @@ def main():
                                   or (FLAGS.samples == 'outer' 
                                       and geneta < etacuts[-(ic+1)] 
                                       and geneta >= etacuts[-(ic+2)]) )
-
             check_bools = int(bool_sig)
             for ic in range(len(etacuts)-1):
                 check_bools += int(bools_bckg[ic])
@@ -368,8 +379,12 @@ def main():
             recen = f1*recen - f2
             deltaE = recen/genen-1.
             ###Store the energy resolution###
+            sc = (3., 1.5)
+            singlecut = ( geneta < sc[0] if FLAGS.samples == 'inner' 
+                          else geneta > sc[1] )
+
             if FLAGS.mode == 1:
-                if geneta < FLAGS.etacuts[-2]:
+                if singlecut:
                     histos[hn[0].format(ireg)].Fill(deltaE)
                     histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
                     histos[hn[2].format(ireg)].Fill(geneta, genphi)
@@ -380,6 +395,12 @@ def main():
                 for il in range(1,NLAYERS+1):
                     #if: 'signal-like': complete showers
                     #elif: 'background-like': incomplete showers
+                    if FLAGS.apply_weights:
+                        if FLAGS.samples == 'inner':
+                            weight_limit = il > boundaries[ireg-1] 
+                        else:
+                            weight_limit = il < boundaries[ireg-1] 
+                    
                     b = histos[hn[2].format(ireg)].FindBin(il)
                     if bool_sig:
                         v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
@@ -395,16 +416,19 @@ def main():
                                 v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
                                 histos[hn[3+w].format(ireg)].Fill(b,v/genen)
                                 if ( FLAGS.apply_weights and 
-                                     weights[w + (ireg-1)*NREG][il-1]!=0):
-                                    recen_corr += v/weights[w + (ireg-1)*NREG][il-1]
+                                     weights[ireg-1][w][il-1]!=0 and
+                                     weight_limit):
+                                    recen_corr += v/weights[ireg-1][w][il-1]
+                                    #weight_graphs[ireg][il].SetBit(weight_graphs[ireg][il].klsSortedX)
+                                    #weight_graphs[ireg][il].Eval(geneta, spline=0, 'S')
                                 v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
                                      *A[ireg-1]/A[2] - f2)
                                 histos[hn[7+w].format(ireg)].Fill(b,v/genen)
-                if geneta < FLAGS.etacuts[-2]:
+                if singlecut and FLAGS.apply_weights:
+                    recen_corr *= (1 / (1-lowstats_factors[ireg-1]) )
                     deltaE_corr = recen_corr/genen-1.
                     histos[hn[0].format(ireg)].Fill(deltaE)
                     histos[hn[1].format(ireg)].Fill(deltaE_corr)
-
 
     #end of tree loop    
     fIn.Close()
