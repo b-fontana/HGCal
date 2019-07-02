@@ -3,7 +3,6 @@ import argparse
 class Argparser():
     def __init__(self):
         self.p = argparse.ArgumentParser()
-
         self.p.add_argument(
             '--mingenen',
             type=float,
@@ -13,7 +12,7 @@ class Argparser():
         self.p.add_argument(
             '--mingeneta',
             type=float,
-            default=1.4,
+            default=1.6,
             help='Minimum pseudo-rapidity (eta) of the generated particle.'
         )
         self.p.add_argument(
@@ -21,6 +20,18 @@ class Argparser():
             type=float,
             default=3.2,
             help='Maximum pseudo-rapidity (eta) of the generated particle.'
+        )
+        self.p.add_argument(
+            '--etacuts',
+            nargs='+',
+            type=float,
+            help='Cuts in pseudo-rapidity.'
+        )
+        self.p.add_argument(
+            '--mask',
+            type=int,
+            default=0,
+            help='Mask (3, 4, 5 or 6)'
         )
         self.p.add_argument(
             '--noPUFile',
@@ -51,6 +62,18 @@ class Argparser():
             type=str,
             default='',
             help="Sample being analysed ('inner' or 'outer')"
+        )
+        self.p.add_argument(
+            '--mode',
+            type=int,
+            default=0,
+            help="Modes: 1 or 2"
+        )
+        self.p.add_argument(
+            '--apply_weights',
+            action='store_true',
+            default=False,
+            help='Whether to apply correction weights or not.'
         )
         self.p.add_argument(
             '--outpath',

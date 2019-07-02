@@ -2,7 +2,10 @@ from ROOT import TLorentzVector, TMath
 
 class ROISummary():
     """
-    Summary of the energy collected in a region of interest.
+    Summary of the energy collected in a region of interest (ROI). The ROIs correspond
+    either a photon or regions to study the noise close to the signal ROI. Each ROI
+    may thus have many hits in different layers.
+    The energy of the hits is stored per layer.
     """
     def __init__(self, genP4, Nregions=3, Nlayers=28):
         self.genP4_   = genP4
@@ -20,39 +23,32 @@ class ROISummary():
         else:
             self.recEn_[regIdx-1][layer-1] += en
 
-    def getReconstructedP4(self, regIdx, layer):
+    def getRecoP4(self, regIdx):
         """
-        Sums the energy collected in a given signal region and layer
+        Sums the energy collected in a given signal region
         and returns the 4-vector.
         """
         p4 = TLorentzVector(0,0,0,0)
-        en = sum([self.recEn_[ireg][layer-1] for ireg in range(regIdx)])
+        en = 0
+        for ireg in range(regIdx):
+            for il in range(self.Nlayers_):
+                en += self.recEn_[ireg][il] 
         pt = en / TMath.CosH(self.genP4_.Eta())
         p4.SetPtEtaPhiM(pt, self.genP4_.Eta(), self.genP4_.Phi(), 0)
         return p4
 
-    def getTotalReconstructedP4(self, regIdx):
-        """
-        Sums the energy collected in a given signal region and returns the 4-vector.
-        """
-        p4 = TLorentzVector(0,0,0,0)
-        en = 0
-        for il in range(self.Nlayers):
-            en += sum([self.recEn_[ireg][il] for ireg in range(regIdx)])
-        pt = totalEn / TMath.CosH(self.genP4_.Eta())
-        p4.SetPtEtaPhiM(pt, self.genP4_.Eta(), self.genP4_.Phi(), 0)
-        return p4
+    def getRecoEnergyDeposited(self, regIdx, layer):
+        return sum([self.recEn_[x][layer-1] for x in range(regIdx)])
 
-    def getNoiseInRegion(self, regIdx, layer):
+    def getNoiseInROI(self, regIdx):
         """
-        Gets the noise in a region.
+        Gets the averaged noise in a region.
         """
-        return sum([self.noiseEn_[ireg][layer-1] for ireg in range(regIdx)])/5.
-
-    def getTotalNoiseInRegion(self, regIdx):
-        """
-        Gets the noise in a region.
-        """
-        for il in range(self.Nlayers):
-            en += sum([self.noiseEn_[ireg][il] for ireg in range(regIdx)])
-        return en/5.
+        noise = 0
+        for ireg in range(regIdx):
+            for il in range(self.Nlayers_):
+                noise += self.noiseEn_[ireg][il] 
+        return noise / 5.
+        
+    def getNoiseInLayer(self, regIdx, layer):
+        return sum([self.noiseEn_[x][layer-1] for x in range(regIdx)])
