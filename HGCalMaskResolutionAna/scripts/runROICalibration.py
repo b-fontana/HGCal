@@ -392,10 +392,10 @@ def main():
                           else geneta > FLAGS.etacuts[0] )
 
             if FLAGS.mode == 1:
-                if singlecut:
-                    histos[hn[0].format(ireg)].Fill(deltaE)
-                    histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
-                    histos[hn[2].format(ireg)].Fill(geneta, genphi)
+                #if singlecut:
+                histos[hn[0].format(ireg)].Fill(deltaE)
+                histos[hn[1].format(ireg)].Fill(geneta, genphi, deltaE)
+                histos[hn[2].format(ireg)].Fill(geneta, genphi)
 
             elif FLAGS.mode == 2:
                 ###Calculate and calibrate the energy per layer###
