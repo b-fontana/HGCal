@@ -155,9 +155,9 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                    title=titles[it], draw_options='colz')
                 tex = plot.setLatex(ts=0.04)
                 if FLAGS.samples == 'inner':
-                    tex.DrawLatex(0.75,0.93,' |#eta| < '+str(FLAGS.mingeneta))
+                    tex.DrawLatex(0.75,0.93,' |#eta| < '+str(FLAGS.maxgeneta))
                 elif FLAGS.samples == 'outer':
-                    tex.DrawLatex(0.75,0.93,' |#eta| > '+str(FLAGS.maxgeneta))
+                    tex.DrawLatex(0.75,0.93,' |#eta| > '+str(FLAGS.mingeneta))
 
         elif FLAGS.mode == 2:
             for ih in range(NREG):
@@ -183,11 +183,11 @@ def plotHistograms(histos, cdims, pcoords, cname):
                             if FLAGS.samples == 'inner':
                                 tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'
                                               .format((ih%3)+1))
-                                tex.DrawLatex(0.65,0.84,str(FLAGS.maxgeneta)+'< |#eta| < '+str(FLAGS.etacuts[-2]))
+                                tex.DrawLatex(0.62,0.84,str(FLAGS.maxgeneta)+' < |#eta| < '+str(FLAGS.etacuts[-2]))
                             elif FLAGS.samples == 'outer':
                                 tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'
                                               .format((ih%3)+1))
-                                tex.DrawLatex(0.65,0.84,str(FLAGS.etacuts[0])+' |#eta| > '+str(FLAGS.mingeneta))
+                                tex.DrawLatex(0.62,0.84,str(FLAGS.etacuts[0])+' |#eta| > '+str(FLAGS.mingeneta))
                         tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
                         tex.SetTextAlign(31)
 
@@ -247,8 +247,8 @@ def plotHistograms(histos, cdims, pcoords, cname):
                     for iv in range(len(FLAGS.etacuts)-1):
                         legends2[ih].AddEntry(hdiv[iv], 'weight'+str(iv+1), 'L')
                         legends2[ih].Draw()
-                        tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
-                        tex.SetTextAlign(31)
+                    tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
+                    tex.SetTextAlign(31)
 
         plot.save(cpos=0, name=cname)
 
@@ -311,7 +311,7 @@ def main():
         hn = ['den{}', 'den{}_2D_res', 'den{}_2D_events']
         for ireg in range(1,NREG+1):
             histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg),';#Delta E/E;PDF',
-                                                  100, liminf, limsup)
+                                                  100, -1.05, .8)
             histos[hn[1].format(ireg)] = TH2F(hn[1].format(ireg), ';|#eta|;#phi',
                                                   50, etainf, etasup,
                                                   12, -TMath.Pi(), TMath.Pi())
@@ -500,6 +500,7 @@ def main():
             histos = histos[:12]
         else:
             histos = histos[12:]
+            print("LEN: ", len(histos))
     plotHistograms(histos, cdims, pcoords, 
                    os.path.join(FLAGS.outpath,picname))
     fOut=TFile.Open('calib{}.root'.format(''.join(calib.keys())),'RECREATE')
