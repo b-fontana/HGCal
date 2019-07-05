@@ -5,6 +5,7 @@ from UserCode.HGCalMaskResolutionAna import Argparser
 
 from ROOT import TFile, TNtuple
 from UserCode.HGCalMaskResolutionAna.ROISummary import ROISummary
+from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 
 parser = Argparser.Argparser()
 FLAGS = parser.get_flags()
@@ -14,10 +15,12 @@ def main():
     """
     Creates a simple summary of the ROI for fast calibration.
     """
-    NREG, NLAYERS = 3, 28
-    fOut = TFile(FLAGS.outpath+'.root', 'RECREATE')
+    studies = PartialWafersStudies()
+    NREG, NLAYERS = studies.nsr, studies.nlayers
+
+    fOut = TFile(FLAGS.outpath, 'RECREATE')
     fOut.cd()
-    varnames  = ['genen','geneta','genphi']
+    varnames  = ['genen', 'geneta', 'genphi']
     for i in range(1,NREG+1):
         varnames += ['en_sr{}_ROI'.format(i), 
                      'noise_sr{}_ROI'.format(i)]
@@ -26,7 +29,7 @@ def main():
                          'noise_sr{}_layer{}'.format(i,il)]
     output_tuple = TNtuple("data","data",":".join(varnames))
 
-    fIn = TFile.Open(FLAGS.noPUFile+'.root')
+    fIn = TFile.Open(FLAGS.noPUFile)
     t = fIn.Get('an_mask/data')
     for i in range(0,t.GetEntriesFast()):
         t.GetEntry(i)
@@ -48,20 +51,6 @@ def main():
             regIdx  = h.signalRegion()
             roiList[roiKey].addHit(en=en, layer=layer, isNoise=isNoise, regIdx=regIdx)
 
-        """
-        CHECK
-        import numpy as np
-        all1 = [roiList[0].getRecoEnergyDeposited(1,x) for x in range(1,29)]
-        if not (np.isclose(roiList[0].getRecoP4(1).E(),sum(all1))):
-            print(roiList[0].getRecoP4(1).E(), sum(all1))
-        all2 = [roiList[0].getRecoEnergyDeposited(2,x) for x in range(1,29)]
-        if not (np.isclose(roiList[0].getRecoP4(2).E(),sum(all2))):
-            print(roiList[0].getRecoP4(2).E(), sum(all2))
-        all3 = [roiList[0].getRecoEnergyDeposited(3,x) for x in range(1,29)]
-        if not (np.isclose(roiList[0].getRecoP4(3).E(), sum(all3))):
-            print(roiList[0].getRecoP4(3).E(), sum(all3))
-        continue
-        """
         for r in roiList:
             varvals = []
             genP4 = roiList[r].getGenP4()
