@@ -18,31 +18,35 @@ class Calibration(PartialWafersStudies, object):
         self.plotLabel = plotLabel
         self.outpath = outpath
 
-    def _calibrateSpectrum(self, h, title, proc, func='pol1'):
+    def _calibrateSpectrum(self, h, title, proc, func='pol1', plot):
         """
         Calibrates a DeltaE/E versus x spectrum based on the profile.
         """
-        c = TCanvas('c','c',500,500)
-        c.SetTopMargin(0.05)
-        c.SetBottomMargin(0.1)
-        c.SetLeftMargin(0.12)
-        c.SetRightMargin(0.1)
         prof = buildMedianProfile(h)
-        h.Draw('colz')
-        prof.Draw('e2p')
         prof.Fit(func)
-        calibGr = prof.GetListOfFunctions().At(0).Clone(h.GetName()+title+'_calib')        
-        tex = TLatex()
-        tex.SetTextFont(42)
-        tex.SetTextSize(0.04)
-        tex.SetNDC()
-        tex.DrawLatex(0.12,0.96,'#bf{CMS} #it{simulation preliminary}')
-        tex.DrawLatex(0.15,0.88,title)
-        tex.SetTextAlign(31)
-        tex.DrawLatex(0.97,0.96,proc)        
-        c.SaveAs(os.path.join(self.outpath,h.GetName()+title+'.png'))
-        prof.Delete()        
-        c.Delete()
+        calibGr = prof.GetListOfFunctions().At(0).Clone(h.GetName()+title+'_calib')
+
+        if plot:
+            c = TCanvas('c','c',500,500)
+            c.SetTopMargin(0.05)
+            c.SetBottomMargin(0.1)
+            c.SetLeftMargin(0.12)
+            c.SetRightMargin(0.1)
+            h.Draw('colz')
+            prof.Draw('e2p')
+
+            tex = TLatex()
+            tex.SetTextFont(42)
+            tex.SetTextSize(0.04)
+            tex.SetNDC()
+            tex.DrawLatex(0.12,0.96,'#bf{CMS} #it{simulation preliminary}')
+            tex.DrawLatex(0.15,0.88,title)
+            tex.SetTextAlign(31)
+            tex.DrawLatex(0.97,0.96,proc)        
+            c.SaveAs(os.path.join(self.outpath,h.GetName()+title+'.png'))
+            prof.Delete()        
+            c.Delete()
+
         return calibGr
 
     def _getEnergiesForCalibration(self, data, ireg):
@@ -65,7 +69,7 @@ class Calibration(PartialWafersStudies, object):
         return np.array(x)
 
 
-    def L0L1Calibration(self, f, nq=6):
+    def L0L1Calibration(self, f, nq=6, plot=True):
         """
         Performs the L0 (uniform eta response) and L1 (absolute scale) calibrations.
         """
@@ -83,7 +87,8 @@ class Calibration(PartialWafersStudies, object):
                 deltaE=recEn/genEn-1.
                 resVsEta.Fill(genEta,deltaE)
             self.calib['L0'][ireg] = self._calibrateSpectrum(resVsEta,'SR%d'%ireg,
-                                                    self.plotLabel+' (PU=0)','pol2')
+                                                        self.plotLabel+' (PU=0)','pol2',
+                                                             plot=plot)
     
             #relative calibration versus energy
             resVsEn = TH2F('resvsen',';Reconstructed energy [GeV];#DeltaE/E', nq, 
@@ -95,7 +100,8 @@ class Calibration(PartialWafersStudies, object):
                 resVsEn.Fill(recen, deltaE)
                 resVsEta.Fill(genEta, deltaE)
             self.calib['L1'][ireg] = self._calibrateSpectrum(resVsEn,'SR%d'%ireg,
-                                                self.plotLabel+' (PU=0)','pol1')
+                                                        self.plotLabel+' (PU=0)','pol1',
+                                                             plot=plot)
         fIn.Close()
 
     def PUCalibration(f, nq=10):
