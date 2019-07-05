@@ -4,14 +4,14 @@ import numpy as np
 from ROOT import TFile, TGraph
 from ROOT import Double
 from UserCode.HGCalMaskVisualProd.RootUtils import PyDoubleBufferToList as toList
+from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 
-class IncompleteShowersCorrection:
+class IncompleteShowersCorrection(PartialWafersStudies, object):
     """
     Provides all methods required to correct incomplete showers.
     """
     def __init__(self, fname, etavalues):
-        self.nlayers_ = 28
-        self.nreg_ = 3
+        super(IncompleteShowersCorrection, self).__init__()
         self.etavalues_ = etavalues
         self.netaintervals_ = len(self.etavalues_)
         self.wn = [['weight1_sr1', 'weight2_sr1', 'weight3_sr1'],
@@ -23,18 +23,18 @@ class IncompleteShowersCorrection:
         self.hn_bckg = [['en1_per_layer_bckg1','en1_per_layer_bckg2','en1_per_layer_bckg3'],
                         ['en2_per_layer_bckg1','en2_per_layer_bckg2','en2_per_layer_bckg3'],
                         ['en3_per_layer_bckg1','en3_per_layer_bckg2','en3_per_layer_bckg3']]
-        for ireg in range(self.nreg_):
+        for ireg in range(self.nsr):
             assert len(self.hn_bckg[ireg]) == self.netaintervals_
         self.f_ = TFile.Open(fname)
 
         self.weights_ = []
-        for ireg in range(self.nreg_):
+        for ireg in range(self.nsr):
             assert len(self.wn[ireg]) == self.netaintervals_
             self.weights_.append([])
             for iw in range(self.netaintervals_):
                 h = self.f_.Get(self.wn[ireg][iw])
                 self.weights_[ireg].append([])
-                for j in range(1,self.nlayers_+1):
+                for j in range(1,self.nlayers+1):
                     b = h.FindBin(j)
                     self.weights_[ireg][iw].append(h.GetBinContent(b))
 
@@ -43,7 +43,7 @@ class IncompleteShowersCorrection:
 
     def buildCorrectionWeightsGraphs(self, region):
         g = []
-        for il in range(self.nlayers_):
+        for il in range(self.nlayers):
             g.append(TGraph(self.netaintervals_))
             for iw in range(self.netaintervals_):
                 x = Double(self.etavalues_[iw])
@@ -53,7 +53,7 @@ class IncompleteShowersCorrection:
 
     def getHistogramsMaxima(self):
         hvals = []
-        for i in range(self.nreg_):
+        for i in range(self.nsr):
             tmp = []
             h = self.f_.Get(self.hn_sig[i])
             for ib in range(h.GetNbinsX()):
@@ -75,14 +75,14 @@ class IncompleteShowersCorrection:
         -> limits: limits on the x axis where the correction should stop being applied
         """
         h, corr_graphs = ([] for _ in range(2))
-        for ireg in range(self.nreg_):
+        for ireg in range(self.nsr):
             h.append([])
             corr_graphs.append([])
             for iw in range(self.netaintervals_):
                 h[ireg].append(self.f_.Get(self.hn_bckg[ireg][iw]))
                 corr_graphs[ireg].append(TGraph(h[ireg][iw].GetNbinsX()))
 
-        for ireg in range(self.nreg_):
+        for ireg in range(self.nsr):
             graphs = RootHistograms(h[ireg]).toGraph()
             assert len(graphs) == self.netaintervals_
             for iw in range(self.netaintervals_):
@@ -103,7 +103,7 @@ class IncompleteShowersCorrection:
         """
         f = []
         assert len(limits) == len(self.hn_sig) 
-        for ireg in range(self.nreg_):
+        for ireg in range(self.nsr):
             assert len(limits) == len(self.wn[ireg])
             h = self.f_.Get(self.hn_sig[ireg])
             if h.Integral() == 0:
