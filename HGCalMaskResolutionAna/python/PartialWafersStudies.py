@@ -1,21 +1,21 @@
-import os, sys
+import os
 import numpy as np
-
-from ROOT import TFile, TGraph
-from ROOT import Double
-from UserCode.HGCalMaskVisualProd.RootUtils import PyDoubleBufferToList as toList
 
 class PartialWafersStudies(object):
     """
     Project base class.
     """
     def __init__(self):
-        self.nlayers = 28
-        self.nreg = 3
+        self._nlayers = 28
+        self.nsr = 3
+        self.sr_dist = (1.3, 2.6, 5.3)
+        self.sr_area = (np.pi*self.sr_dist[0]**2,
+                        np.pi*self.sr_dist[1]**2,
+                        np.pi*self.sr_dist[2]**2)
 
     @property
     def nlayers(self):
-        return self.__nlayers
+        return self._nlayers
     @nlayers.setter
     def nlayers(self, nlayers):
-        self.__nlayers = nlayers
+        self._nlayers = nlayers
