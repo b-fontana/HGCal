@@ -8,16 +8,11 @@ from collections import OrderedDict
 from ROOT import TCanvas, TLatex, TFile, TMath, TH1F
 from ROOT import TLegend, TH2F, TLorentzVector, TProfile, TH1D
 from ROOT import gStyle, gROOT, kTemperatureMap
+from UserCode.HGCalMaskVisualProd.SystemUtils import averageContiguousVals as Av
 from UserCode.HGCalMaskResolutionAna.SoftwareCorrection import IncompleteShowersCorrection
+from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 from UserCode.HGCalMaskVisualProd.RootPlotting import RootPlotting
 from UserCode.HGCalMaskVisualProd.RootObjects import RootHistograms
-
-def valAverage(l):
-    l = np.array(l)
-    l2 = np.roll(l, shift=-1)[:-1]
-    l = l[:-1]
-    l += (l2 - l) / 2
-    return l
 
 def plotHistograms(histos, cdims, pcoords, cname):
     """
@@ -163,8 +158,7 @@ def main():
     if FLAGS.apply_weights:
         calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
                              FLAGS.samples+'_mode2')
-        showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
-                                                 valAverage(FLAGS.etacuts))
+        showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',Av(FLAGS.etacuts))
         weights = showercorr.getCorrectionWeights()
         boundaries = [8., 8., 8.]
         corr_mode = 'right' if FLAGS.samples == 'outer' else 'left'
@@ -440,7 +434,6 @@ if __name__ == "__main__":
     parser = Argparser.Argparser()
     FLAGS = parser.get_flags()
     parser.print_args()
-    NREG=3
-    NLAYERS=28
-    A=[TMath.Pi()*1.3**2, TMath.Pi()*2.6**2, TMath.Pi()*5.3**2]
+    base = PartialWafersStudies()
+    NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     main()
