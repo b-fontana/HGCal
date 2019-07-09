@@ -10,14 +10,22 @@ class _RootObjects:
     Base class.
     """
     __metaclass__ = abc.ABCMeta
-
     def __init__(self, objects):
+        if not isinstance(objects, list):
+            raise TypeError('The Root objects must be stored as a list.')
         self.o_ = objects
+        self.N_ = len(self.o_)
         
+    def getObjects(self):
+        return self.o_
+
     def getObject(self, idx):
         return self.o_[idx]
 
-    def save(self, fname):
+    def getNumberOfObjects():
+        return self.N_
+
+    def save(self, fname, mode='RECREATE'):
         f = TFile.Open(fname+'.root', mode)
         for io in range(len(self.o_)):
             self.o_[io].Write()

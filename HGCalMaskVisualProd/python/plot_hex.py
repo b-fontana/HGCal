@@ -107,6 +107,7 @@ def keyTitleMap(keylist):
 
 pcoords = [[[0.02,0.49,0.98,0.93],    #pad1
            [0.02,0.02,0.98,0.48]]]   #pad2
+cdims = [[500,1000]]
 pad_title = ['RecHits', 'Maximal geometry']
 for ic,_ in enumerate(pcoords):
     if len(pcoords[ic]) != len(pad_title):
@@ -141,7 +142,7 @@ for isd,sd in enumerate(subd_names):
             raise ValueError('There is a problem with the title of the histogram.')
 
         with RootUtils.RootPlotting(ncanvas=1, npads=len(pad_title), 
-                                    pcoords=pcoords) as plot:
+                                    cdims=cdims, pcoords=pcoords) as plot:
             #for ipad in range(len(pad_title)):
             ipad=0
             h1 = convertToHex_alternative(histos[0], int(uvN[2]), .8)
