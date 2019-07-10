@@ -12,3 +12,7 @@ def averageContiguousVals(l):
     l = l[:-1]
     l += (l2 - l) / 2
     return l
+
+def EtaStr(eta):
+    return str(eta).replace('.', 'p', 1)
+        

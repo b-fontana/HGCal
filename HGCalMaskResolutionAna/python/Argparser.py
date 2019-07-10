@@ -28,6 +28,12 @@ class Argparser():
             help='Cuts in pseudo-rapidity.'
         )
         self.p.add_argument(
+            '--etaregions',
+            nargs='+',
+            type=float,
+            help='Pseudo-rapidity regions for calibration.'
+        )
+        self.p.add_argument(
             '--mask',
             type=int,
             default=0,
@@ -71,8 +77,8 @@ class Argparser():
         )
         self.p.add_argument(
             '--apply_weights',
-            action='store_true',
-            default=False,
+            type=int,
+            default=0,
             help='Whether to apply correction weights or not.'
         )
         self.p.add_argument(
