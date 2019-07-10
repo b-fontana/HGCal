@@ -9,16 +9,18 @@ from UserCode.HGCalMaskResolutionAna.RootTools import buildMedianProfile
 
 class Calibration(PartialWafersStudies, object):
     def __init__(self, mingenen, mingeneta, maxgeneta, 
-                 plotLabel, outpath):
+                 label, samples, mask, outpath):
         super(Calibration, self).__init__()
         self.calib = OrderedDict({'L0': {}, 'L1': {}, 'L2': {}})
         self.mingenen = mingenen
         self.maxgeneta = maxgeneta
         self.mingeneta = mingeneta
-        self.plotLabel = plotLabel
+        self.label = label
+        self.samples = samples
+        self.mask = str(mask)
         self.outpath = outpath
 
-    def _calibrateSpectrum(self, h, title, proc, func='pol1', plot):
+    def _calibrateSpectrum(self, h, title, proc, func='pol1', plot=True):
         """
         Calibrates a DeltaE/E versus x spectrum based on the profile.
         """
@@ -61,11 +63,10 @@ class Calibration(PartialWafersStudies, object):
             if genen < self.mingenen: continue
             if geneta < self.mingeneta: continue
             if geneta > self.maxgeneta: continue
-            for il in range(1,self.nsr+1):
-                recen = getattr(data,'en_sr{}_ROI'.format(ireg,il))
-                avgnoise = ( getattr(data,'noise_sr3_layer{}'.format(il))
-                             *self.sr_area[ireg-1]/self.sr_area[2] )
-                x.append( [genen, geneta, recen, avgnoise] )
+            recen = getattr(data,'en_sr{}_ROI'.format(ireg))
+            avgnoise = ( getattr(data,'noise_sr3_ROI')
+                         *self.sr_area[ireg-1]/self.sr_area[2] )
+            x.append( [genen, geneta, recen, avgnoise] )
         return np.array(x)
 
 
@@ -78,21 +79,24 @@ class Calibration(PartialWafersStudies, object):
         for ireg in [1,2,3]:
             x = self._getEnergiesForCalibration(data, ireg)
             xq = np.percentile(x, [i*100./nq for i in range(0,nq+1)], axis=0)
-
+            
             #relative calibration versus eta        
-            resVsEta = TH2F('resvseta',';|#eta|;#DeltaE/E', nq, 
+            resVsEta = TH2F('resvseta_'+self.samples+'_'+self.mask+'_',
+                            ';|#eta|;#DeltaE/E', nq, 
                               Carray('d',xq[:,1]), 100,-1,1)
             for i in range(0,len(x)):
                 genEn, genEta, recEn,_ = x[i]
                 deltaE=recEn/genEn-1.
                 resVsEta.Fill(genEta,deltaE)
             self.calib['L0'][ireg] = self._calibrateSpectrum(resVsEta,'SR%d'%ireg,
-                                                        self.plotLabel+' (PU=0)','pol2',
+                                                             self.label+' (PU=0)',
+                                                             func='pol2',
                                                              plot=plot)
     
             #relative calibration versus energy
-            resVsEn = TH2F('resvsen',';Reconstructed energy [GeV];#DeltaE/E', nq, 
-                             Carray('d',xq[:,0]), 100,-1,1)
+            resVsEn = TH2F('resvsen_'+self.samples+'_'+self.mask+'_',
+                           ';Reconstructed energy [GeV];#DeltaE/E', nq, 
+                           Carray('d',xq[:,0]), 100,-1,1)
             for i in range(0,len(x)):
                 genen, geneta, recen, _ = x[i]
                 recen /= (self.calib['L0'][ireg].Eval(geneta)+1.0)
@@ -100,7 +104,8 @@ class Calibration(PartialWafersStudies, object):
                 resVsEn.Fill(recen, deltaE)
                 resVsEta.Fill(genEta, deltaE)
             self.calib['L1'][ireg] = self._calibrateSpectrum(resVsEn,'SR%d'%ireg,
-                                                        self.plotLabel+' (PU=0)','pol1',
+                                                             self.label+' (PU=0)',
+                                                             func='pol1',
                                                              plot=plot)
         fIn.Close()
 
@@ -117,7 +122,8 @@ class Calibration(PartialWafersStudies, object):
             xq=np.percentile(x, [i*100./nq for i in range(0,nq+1)], axis=0)
 
             #relative calibration versus eta
-            resolVsNoiseFrac = TH2F('resolvsnoisefrac',';<Noise> [GeV];#DeltaE [GeV]', nq, 
+            resolVsNoiseFrac = TH2F('resolvsnoisefrac_'+self.samples+'_'+self.mask+'_',
+                                    ';<Noise> [GeV];#DeltaE [GeV]', nq, 
                                     Carray('d',xq[:,3]),50,-100,100)
 
             for i in range(0,len(x)):
@@ -128,5 +134,5 @@ class Calibration(PartialWafersStudies, object):
                 resolVsNoiseFrac.Fill(noiseEst,deltaE)
     
             self.calib['L2'][ireg] = self._calibrateSpectrum(resolVsNoiseFrac,'SR%d'%ireg,
-                                                    FLAGS.plotLabel+' (PU=140)', 'pol2')
+                                                    self.label+' (PU=140)', func='pol2')
         fIn.Close()
