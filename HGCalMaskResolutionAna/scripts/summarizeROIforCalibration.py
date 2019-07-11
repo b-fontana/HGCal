@@ -27,9 +27,6 @@ def main():
                          'noise_sr{}_layer{}'.format(i,il)]
     output_tuple = TNtuple("data","data",":".join(varnames))
 
-    fracEn = np.zeros((NREG,NLAYERS), dtype=float)
-    countfracEn = np.zeros((NREG,NLAYERS), dtype=int)
-
     fIn = TFile.Open(FLAGS.noPUFile)
     t = fIn.Get('an_mask/data')
     for i in range(0,t.GetEntriesFast()):
@@ -66,26 +63,8 @@ def main():
                     noiseLayer = roiList[r].NoiseInLayer(ireg, il)
                     varvals += [recEn, noiseLayer]
 
-                    if ( FLAGS.samples == "inner" and genP4.Eta() < FLAGS.maxgeneta or
-                         FLAGS.samples == "outer" and genP4.Eta() > FLAGS.mingeneta ):
-                        fracEn[ireg-1,il-1] += roiList[r].FractionEnergyDeposited(ireg, il)
-                        countfracEn[ireg-1,il-1] += 1
-
             output_tuple.Fill(array.array("f", varvals))
     fOut.cd()
-    
-    #Write energy distribution of complete showers for complete/incomplete discrimination
-    fracEn /= countfracEn
-    bins = Carray('d', np.arange(0.5,NLAYERS+1,1))
-    for ireg in range(NREG):
-        h = TH1F('complete_showers_standard_sr'+str(ireg+1), 
-                 'complete_showers_standard_sr'+str(ireg+1),
-                 len(bins)-1, bins)
-        for il in range(NLAYERS):
-            b = h.FindBin(il+1)
-            h.Fill(b,fracEn[ireg,il])
-        h.Write()
-
     #output_tuple.Write()
     fOut.Write()
     fOut.Close()

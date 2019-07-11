@@ -72,8 +72,8 @@ from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import *
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
-indir1 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_20190531/RECO/" #Inner radii
-indir2 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_outer_20190605/RECO/" #Outer radii
+indir1 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_inner_20190619/RECO/" #Inner radii
+indir2 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_outer_20190619/RECO/" #Outer radii
 glob1 = glob.glob(os.path.join(indir1,"*.root"))
 glob2 = glob.glob(os.path.join(indir2,"*.root"))
 if F.samples == 'all':
@@ -86,13 +86,12 @@ else:
     raise ValueError('Insert a valid "samples" option!')
 fNames = ["file:" + it for it in glob_tot][F.fidx]
 
+
 if isinstance(fNames,list):     
-    print(fNames)
     process.source = cms.Source("PoolSource",
                         fileNames = cms.untracked.vstring(*fNames),
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 else:
-    print(fNames)
     process.source = cms.Source("PoolSource",
                         fileNames = cms.untracked.vstring(fNames),
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
@@ -110,6 +109,7 @@ outsubdir = F.outdir
 fileName = str(F.fidx)+"_mask"+str(F.mask)+"_"+F.samples+"_"+pu_str
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string(fileName+'.root'))
+
 fileName = fileName + '_out'
 process.out = cms.OutputModule("PoolOutputModule", 
                                fileName = cms.untracked.string(fileName+'.root'))

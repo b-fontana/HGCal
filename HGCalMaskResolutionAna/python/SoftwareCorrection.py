@@ -115,5 +115,6 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
                 limita = h.FindBin(limits[ireg])
                 limitb = h.FindBin(h.GetNbinsX())
             f.append( h.Integral(limita, limitb) / h.Integral() )
+            h.Delete()
         return f
     

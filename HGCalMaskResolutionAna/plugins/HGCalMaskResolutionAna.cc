@@ -105,12 +105,9 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     selGenPartIdx.push_back(i);
   }
   if(slimmedROIs_->size()!=nparticles) {
-    std::cout << "Does not have two photons!" << std::endl;
+    std::cout << "Does not have two particles!" << std::endl;
     return;
   }
-
-  //TLorentzVector mrr(slimmedROIs_->at(0).p4()+slimmedROIs_->at(1).p4());
-  //if(fabs(mrr.M()-125)>5) return;
 
   //shift ROIs in phi to create control ROIs for noise/pileup control
   for(size_t ir=0; ir<nparticles; ir++) {
@@ -179,7 +176,7 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
 	signalRegion=2;
       if(d<=1.3) 
 	signalRegion=1;
-      //break;
+      break;
     }
     if(matchedROIidx<0) {
       nUnmatched++;
@@ -190,7 +187,7 @@ void HGCalMaskResolutionAna::analyze( const edm::Event &iEvent, const edm::Event
     unsigned int layer = recHitTools_.getLayerWithOffset(did);
     double thickness   = recHitTools_.getSiThickness(did);
     float en = h.energy();
-    double mip = dEdXWeights_[layer] * 0.001;  // convert in GeV
+    double mip = dEdXWeights_[layer] * 0.001;  // convert to GeV
     size_t thickCorrIdx(0);
     if (thickness > 199. && thickness < 201.) 
       thickCorrIdx = 1;

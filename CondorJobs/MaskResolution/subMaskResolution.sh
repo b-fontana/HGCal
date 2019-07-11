@@ -37,9 +37,6 @@ eval `scramv1 runtime -sh` #cmsenv substitute
 cd "${INIT_FOLDER}";
 pwd
 
-#cd UserCode/HGCalMaskVisualProd/;
-#scram b -j 8;
-
 if [ -e "${CONFIG_FILE}" ]; then
     echo "Before command";
     cmsRun "${CONFIG_FILE}" pu=0 fidx="${1}" mask="${2}" samples="${3}"
@@ -52,7 +49,7 @@ fi
 outfile="${1}_mask${2}_${3}_nopu"
 if [ -r "${outfile}.root" ]; then
     mv "${outfile}.root" /eos/user/b/bfontana/HGCalMaskResolution/mask"${2}"_"${3}"/;
-    rm "${outfile}_out.root";
+    #rm "${outfile}_out.root";
 else
     echo "File ${outfile}.root was not produced by the configuration file.";
     exit 0;

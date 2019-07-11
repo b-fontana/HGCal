@@ -1,4 +1,4 @@
-samples=inner
+samples=outer
 script_name=Mask$(MASK)ResolutionAna_$(samples)
 
 executable            = subMaskResolution.sh

@@ -1,4 +1,4 @@
-samples=inner
+samples=outer
 script_name=MaskVisual$(MASK)_$(samples)
 
 executable            = subMaskVisual.sh
@@ -10,4 +10,4 @@ error                 = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK
 log                   = log/$(script_name).$(ClusterId).log
 RequestCpus	      = 1
 +JobFlavour = "longlunch"
-queue 100 MASK in (6)
+queue 200 MASK in (3,4,5,6)

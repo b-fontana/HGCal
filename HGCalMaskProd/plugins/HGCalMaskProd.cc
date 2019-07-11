@@ -1,7 +1,7 @@
 #include "UserCode/HGCalMaskProd/plugins/HGCalMaskProd.h"
 
 HGCalMaskProd::HGCalMaskProd(const edm::ParameterSet& iConfig):
-  recHitsToken_(consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit", "HGCEERecHits"))),
+  recHitsToken_(consumes<HGCRecHitCollection>(edm::InputTag("HGCalRecHit","HGCEERecHits"))),
   layersAnalysed_(iConfig.getParameter<std::vector<int_layer>>("LayersAnalysed")),
   mask_(iConfig.getParameter<unsigned int>("Mask"))
 {
@@ -34,11 +34,6 @@ HGCalMaskProd::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   }    
   iEvent.put(std::move(recHitsMaskColl), collectionName);
 
-  /* this is an EventSetup example
-  //Read SetupData from the SetupRecord in the EventSetup
-  ESHandle<SetupData> pSetup;
-  iSetup.get<SetupRecord>().get(pSetup);
-  */
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
