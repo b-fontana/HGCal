@@ -95,8 +95,7 @@ def main():
         histos[h].Sumw2()
         histos[h].SetMarkerStyle(20)
         histos[h].SetDirectory(0)
-    it = 0
-    countzeros = np.zeros((3))
+
     for i in range(0,nentries):
         data.GetEntry(i)
         genen    = getattr(data,'genen')        
@@ -123,7 +122,6 @@ def main():
                     ROI_en[il-1] = v/recen
                 except ZeroDivisionError:
                     ROI_en[il-1] = 0.
-                    countzeros[ireg-1] += 1
             bool_sig = DifferentiateShowers(ROI_en, fracEn[ireg-1,:], 
                                             threshold=.5, min_val=0.05)
             if bool_sig:
