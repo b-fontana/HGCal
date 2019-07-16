@@ -22,10 +22,10 @@ class Argparser():
             help='Maximum pseudo-rapidity (eta) of the generated particle.'
         )
         self.p.add_argument(
-            '--etacuts',
+            '--bckgcuts',
             nargs='+',
             type=float,
-            help='Cuts in pseudo-rapidity.'
+            help='Create background regions based on array values.'
         )
         self.p.add_argument(
             '--etaregions',
@@ -74,6 +74,12 @@ class Argparser():
             type=int,
             default=0,
             help="Modes: 1 or 2"
+        )
+        self.p.add_argument(
+            '--method',
+            type=str,
+            default='',
+            help="Methods: 'ed' (energy distribution) or 'fineeta' (full calibration)"
         )
         self.p.add_argument(
             '--apply_weights',

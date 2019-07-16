@@ -44,7 +44,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                    title=titles[it], draw_options='colz')
                 tex = plot.setLatex(ts=0.04)
                 if ih<3:
-                    plot.fitHistogram(h=h, fname='crystalball', 
+                    plot.fitHistogwram(h=h, fname='crystalball', 
                                       frange=(-1.,1.), tex=tex)
 
                 if FLAGS.samples == 'inner':
@@ -56,8 +56,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
 
         elif FLAGS.mode == 2:
             if FLAGS.apply_weights:
-                fOut = TFile('allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'.root', 
-                             'RECREATE')
+                extra = '_ed' if len(etaregions)==2 else '_fineeta'
                 legends1 = [TLegend(0.12, 0.76, 0.44, 0.89) for  _ in range(3)]
             else:
                 legends1 = [TLegend(0.56, 0.66, 0.86, 0.89) for  _ in range(3)]
@@ -66,7 +65,6 @@ def plotHistograms(histos, cdims, pcoords, cname):
             for ih in range(NREG):
                 if FLAGS.apply_weights:
                     for ixx in range(int(npads/NREG)):
-                        fOut.cd()
                         idx = ih+NREG*ixx
                         if ixx == 0:
                             plot.plotHistogram(cpos=0, ppos=idx, h=histos[idx], 
@@ -77,7 +75,6 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                                lw=3,mc=4,msize=.5,lc=4, 
                                                title=titles[ixx],
                                                draw_options='colz')
-                        histos[idx].Write()
                         tex = plot.setLatex()
                         if ixx == 0:
                             plot.fitHistogram(h=histos[idx], fname='crystalball', 
@@ -91,9 +88,6 @@ def plotHistograms(histos, cdims, pcoords, cname):
 
                             tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
                             tex.SetTextAlign(31)
-                    if ixx==int(npads/NREG) and ih==2:
-                        fOut.Write()
-                        fOut.Close()
                 elif not FLAGS.apply_weights:
                     linec = [4, 2, 3, 7]
                     plot.plotHistogram(cpos=0, ppos=ih, h=histos[ih], 
@@ -109,22 +103,20 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                        lw=3, mc=linec[3], msize=.5, lc=linec[3],
                                        draw_options='same E')
                     tex = plot.setLatex()
-                    th = [str(.5), str(.6), str(.7)]
+                    th = [str(i) for i in bckgcuts]
                     if FLAGS.samples == 'inner':
                         tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
-                        legends1[ih].AddEntry(histos[ih], 
-                                              'Cumdiff < '+th[0], 'L')
-                        for it in range(len(th)-1):
-                            legends1[ih].AddEntry(histos[ih+3*(it+1)], 
-                                                  th[it]+'< Cumdiff < '+th[it+1], 'L')
-                        legends1[ih].AddEntry(histos[ih+3*(it+2)], 
-                                              'Cumdiff > '+th[it+1], 'L')
-
                     elif FLAGS.samples == 'outer':
                         tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
-                        legends1[ih].AddEntry(histos[ih], '-', 'L')
-                        for ic in range(len(FLAGS.etacuts)-1):
-                            legends1[ih].AddEntry(histos[ih+3*(ic+1)], '-', 'L')
+
+                    legends1[ih].AddEntry(histos[ih], 
+                                          'Cumdiff < '+th[0], 'L')
+                    for it in range(len(th)-1):
+                        legends1[ih].AddEntry(histos[ih+3*(it+1)], 
+                                              th[it]+'< Cumdiff < '+th[it+1], 'L')
+                    legends1[ih].AddEntry(histos[ih+3*(it+2)], 
+                                          'Cumdiff > '+th[it+1], 'L')
+
                     tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
                     tex.SetTextAlign(31)
                     legends1[ih].Draw()
@@ -132,7 +124,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
                     hdiv.append(histos[ih+3].Clone('weight1_sr{}'.format(ih+1)))
                     hdiv.append(histos[ih+6].Clone('weight2_sr{}'.format(ih+1)))
                     hdiv.append(histos[ih+9].Clone('weight3_sr{}'.format(ih+1)))
-                    for idiv in range(len(FLAGS.etacuts)-1):
+                    for idiv in range(len(th)-1):
                         hdiv[-3+idiv].Divide(histos[ih])
                         extrastr = '' if idiv==0 else 'same'
                         hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 2.)
@@ -146,7 +138,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
                         tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
                     elif FLAGS.samples == 'outer':
                         tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
-                    for iv in range(len(FLAGS.etacuts)-1):
+                    for iv in range(len(th)-1):
                         legends2[ih].AddEntry(hdiv[iv], 'weight'+str(iv+1), 'L')
                         legends2[ih].Draw()
                     tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
@@ -155,8 +147,9 @@ def plotHistograms(histos, cdims, pcoords, cname):
         plot.save(cpos=0, name=cname)
 
     if not FLAGS.apply_weights:
+        extra = '_ed' if len(etaregions)==2 else '_fineeta'
         save_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                     FLAGS.samples+'_mode'+str(FLAGS.mode) )
+                     FLAGS.samples+'_mode'+str(FLAGS.mode)+extra )
         RootHistograms(histos).save(save_str)
         RootHistograms(hdiv).save(save_str, mode='UPDATE')
 
@@ -168,19 +161,23 @@ def main():
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
 
+    """
     calibration = Calibration(FLAGS.mingenen, etaregions,
                               FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
     calibration.L0L1Calibration(FLAGS.noPUFile)
     with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_nopu.pck','w') as cachefile:
         pickle.dump(calibration.calib, cachefile, pickle.HIGHEST_PROTOCOL)
+    """
     with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_nopu.pck','r') as cachefile:
         calib = pickle.load(cachefile)
 
     if FLAGS.apply_weights:
+        extra = '_ed' if len(etaregions)==2 else '_fineeta'
         calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                             FLAGS.samples+'_mode2')
+                             FLAGS.samples+'_mode2'+extra)
+        bckgcuts_extended = np.append(bckgcuts, 0.9)
         showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
-                                                 discrvals=Av(FLAGS.etacuts))
+                                                 discrvals=Av(bckgcuts_extended))
         weights = showercorr.CorrectionWeights()
         boundaries = [5, 5, 5]
         corr_mode = 'right' if FLAGS.samples == 'outer' else 'left'
@@ -189,8 +186,6 @@ def main():
                           for i in range(NREG)]
 
     histos=OrderedDict()
-    etacuts = FLAGS.etacuts
-
     if FLAGS.samples == 'inner':
         phibins, etabins, etainf, etasup = 12, 10, 2.69, 3.04
         enbins, eninf, ensup = 200, -2.01, 1.99
@@ -300,12 +295,6 @@ def main():
         geneta   = abs(getattr(data,'geneta'))
         genphi   = getattr(data,'genphi')
 
-        sc = (FLAGS.maxgeneta, FLAGS.mingeneta)
-        singlecut = ( geneta < sc[0] if FLAGS.samples == 'inner' 
-                      else geneta > sc[1] )
-        insidecut = ( geneta < FLAGS.etacuts[-2] if FLAGS.samples == 'inner' 
-                      else geneta > FLAGS.etacuts[1] )
-
         for ireg in range(1,NREG+1):
             recen = getattr(data,'en_sr{}_ROI'.format(ireg))
             avgnoise = getattr(data,'noise_sr3_ROI')*A[ireg-1]/A[2]
@@ -350,12 +339,15 @@ def main():
                         ROI_en[il-1] = 0.
 
                 lshift = [.65, .59, .48] #layer shift
-                assert len(th) == len(lshift)
+                assert len(bckgcuts) == len(lshift)
+                extra = '_ed' if len(etaregions)==2 else '_fineeta'
                 calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                                     FLAGS.samples+'_mode2' )
-                c = IncompleteShowersCorrection(calibshowers_str+'.root', discrvals=th)
+                                     FLAGS.samples+'_mode2'+extra )
+                c = IncompleteShowersCorrection(calibshowers_str+'.root', 
+                                                discrvals=[-1, -1, -1])
                 showerid = c.DifferentiateShowersByEnergy(ROI_en, fracEn[ireg-1,:], 
-                                                          thresholds=th, min_val=0.05)
+                                                          thresholds=bckgcuts, min_val=0.05)
+
                 ###Calculate andc calibrate the energy per layer###
                 recen_corr = 0 
                 for il in range(1,NLAYERS+1):
@@ -473,24 +465,30 @@ def main():
                 histos[12+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms/(1+bias))
                 tmp.Delete()
         plotHistograms(histos, cdims, pcoords, 
-                       os.path.join(FLAGS.outpath,picname))
+                       os.path.join(FLAGS.outpath,picname+'.png'))
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
+            fOut = TFile('allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+extra+'.root', 
+                         'RECREATE')
+            fOut.cd()
             for ireg in range(NREG):
                 str1 = hn[4].format(ireg+1)
                 str2 = hn[5].format(ireg+1)
                 histos[12+ireg] = histos[ireg].Clone(str1)
                 histos[15+ireg] = histos[3+ireg].Clone(str2)      
                 histos[12+ireg].Add(histos[6+ireg])
-                histos[15+ireg].Add(histos[6+ireg])
+                histos[15+ireg].Add(histos[9+ireg])
+            for h in histos:
+                h.Write()
             histos_complete = histos[:6]
             histos_incomplete = histos[6:12]
             histos_total = histos[12:18]
+            histos_res2D_before = histos[21:24]
             histos_res2D_after = histos[21:24]
-            #plotHistograms(histos_complete, cdims, pcoords, 
-            #               os.path.join(FLAGS.outpath,picname+'_complete'))
-            #plotHistograms(histos_incomplete, cdims, pcoords, 
-            #               os.path.join(FLAGS.outpath,picname+'_incomplete'))
+            plotHistograms(histos_complete, cdims, pcoords, 
+                           os.path.join(FLAGS.outpath,picname+'_complete.png'))
+            plotHistograms(histos_incomplete, cdims, pcoords, 
+                           os.path.join(FLAGS.outpath,picname+'_incomplete.png'))
 
             ht = histos_total[3:] + histos_res2D_after #res 1D + res 2D
             ss1 = ['rms_vs_eta_after{}', 'bias_vs_eta_after{}', 'indep_vs_eta_after{}']
@@ -508,6 +506,9 @@ def main():
                     ht[9+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), bias)
                     ht[12+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms/(1+bias))
                     tmp.Delete()
+            fOut.cd()
+            for h in ht:
+                h.Write()                
             pcoords = [[[0.01,0.805,0.33,0.995],   
                         [0.34,0.805,0.66,0.995],   
                         [0.67,0.805,0.99,0.995],
@@ -524,12 +525,16 @@ def main():
                         [0.34,0.005,0.66,0.195],
                         [0.67,0.005,0.99,0.195]]]
             cdims = [[1600,2000]]
+            print('2: ', ht)
             plotHistograms(ht, cdims, pcoords, 
-                           os.path.join(FLAGS.outpath,picname+'_total'))
+                           os.path.join(FLAGS.outpath,picname+'_total.png'))
+            fOut.Write()
+            fOut.Close()
+
         else:
             histos = histos[24:]
             plotHistograms(histos, cdims, pcoords, 
-                           os.path.join(FLAGS.outpath,picname))
+                           os.path.join(FLAGS.outpath,picname+'.png'))
 
 if __name__ == "__main__":
     parser = Argparser.Argparser()
@@ -537,7 +542,7 @@ if __name__ == "__main__":
     parser.print_args()
     base = PartialWafersStudies()
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
-    #etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
-    etaregions = [2.7, 2.94]
-    th = np.array([.5, .6, .7])
+    etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+    #etaregions = [2.7, 2.94]
+    bckgcuts = np.array(FLAGS.bckgcuts)
     main()

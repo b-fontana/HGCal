@@ -66,14 +66,13 @@ echo "##########################"
 
 #Declare variables
 OUTFILE=summary_mask"${MASK}"_"${SAMPLES}".root;
+BCKGCUTS=(0.5 0.6 0.7)
 if [ "${SAMPLES}" == "inner" ]; then
     MINGENETA=1.6
     MAXGENETA=2.93
-    ETACUTS=("${MAXGENETA}" 2.95 2.96 3.6)
 elif [ "${SAMPLES}" == "outer" ]; then
     MINGENETA=1.55
     MAXGENETA=1.9
-    ETACUTS=(1.35 1.515 1.525 "${MINGENETA}")
 fi
 
 #Summarize RECO NTuples information
@@ -91,5 +90,5 @@ fi
 #Run the analysis
 if [ "${fa}" -eq 1 ]; then
     echo "Analyze!";
-    python scripts/analysis.py --noPUFile summary_mask"${MASK}"_"${SAMPLES}".root --samples "${SAMPLES}" --mode "${MODE}" --mingeneta "${MINGENETA}" --maxgeneta "${MAXGENETA}" --etacuts "${ETACUTS[@]}" --outpath pics_"${SAMPLES}"/mask"${MASK}" --mask "${MASK}" --apply_weights "${fw}"
+    python scripts/analysis.py --noPUFile summary_mask"${MASK}"_"${SAMPLES}".root --samples "${SAMPLES}" --mode "${MODE}" --mingeneta "${MINGENETA}" --maxgeneta "${MAXGENETA}" --bckgcuts "${BCKGCUTS[@]}" --outpath pics_"${SAMPLES}"/mask"${MASK}" --mask "${MASK}" --apply_weights "${fw}"
 fi

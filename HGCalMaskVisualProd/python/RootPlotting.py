@@ -3,6 +3,65 @@ from array import array as Carray
 from ROOT import TFile, TCanvas, TPad, TMath, TStyle, TExec, TLatex, TGraph, TF1
 from ROOT import gSystem, gDirectory, gStyle, kBlue
 
+def standardPadCoords(rows):
+    if rows==2:
+        return [[[0.01,0.51,0.33,0.99],
+                 [0.34,0.51,0.66,0.99],  
+                 [0.67,0.51,0.99,0.99],
+                 [0.01,0.01,0.33,0.49],   
+                 [0.34,0.01,0.66,0.49],   
+                 [0.67,0.01,0.99,0.49]]]
+    elif rows==4:
+        return [[[0.01,0.755,0.33,0.995],   
+                 [0.34,0.755,0.66,0.995],   
+                 [0.67,0.755,0.99,0.995],
+                 [0.01,0.505,0.33,0.745],   
+                 [0.34,0.505,0.66,0.745],
+                 [0.67,0.505,0.99,0.745],
+                 [0.01,0.255,0.33,0.495],
+                 [0.34,0.255,0.66,0.495],
+                 [0.67,0.255,0.99,0.495],
+                 [0.01,0.005,0.33,0.245],
+                 [0.34,0.005,0.66,0.245],
+                 [0.67,0.005,0.99,0.245]]]
+    elif rows==5:
+        return [[[0.01,0.805,0.33,0.995],   
+                 [0.34,0.805,0.66,0.995],   
+                 [0.67,0.805,0.99,0.995],
+                 [0.01,0.605,0.33,0.795],   
+                 [0.34,0.605,0.66,0.795],
+                 [0.67,0.605,0.99,0.795],
+                 [0.01,0.405,0.33,0.595],
+                 [0.34,0.405,0.66,0.595],
+                 [0.67,0.406,0.99,0.595],
+                 [0.01,0.205,0.33,0.395],
+                 [0.34,0.205,0.66,0.395],
+                 [0.67,0.205,0.99,0.395],
+                 [0.01,0.005,0.33,0.195],
+                 [0.34,0.005,0.66,0.195],
+                 [0.67,0.005,0.99,0.195]]]
+    elif rows==6:
+        return [[[0.01,0.835,0.33,0.995],   
+                 [0.34,0.835,0.66,0.995],   
+                 [0.67,0.835,0.99,0.995],
+                 [0.01,0.670,0.33,0.830],   
+                 [0.34,0.670,0.66,0.830],
+                 [0.67,0.670,0.99,0.830],
+                 [0.01,0.505,0.33,0.665],
+                 [0.34,0.505,0.66,0.665],
+                 [0.67,0.505,0.99,0.665],
+                 [0.01,0.340,0.33,0.500],
+                 [0.34,0.340,0.66,0.500],
+                 [0.67,0.340,0.99,0.500],
+                 [0.01,0.175,0.33,0.335],
+                 [0.34,0.175,0.66,0.335],
+                 [0.67,0.175,0.99,0.335],
+                 [0.01,0.010,0.33,0.170],
+                 [0.34,0.010,0.66,0.170],
+                 [0.67,0.010,0.99,0.170]]]
+    else:
+        raise ValueError('standardPadCoords was not implemented for {} rows.'.format(rows))
+
 class RootPlotting:
     def __init__(self, ncanvas, npads=[1], cdims=None, pcoords=None):
         """
@@ -129,31 +188,41 @@ class RootPlotting:
         tex.SetNDC()
         return tex
 
-    def plotHistogram(self, cpos, ppos, h, 
-                      title='', xaxis_title='', yaxis_title='',
-                      lc=1, lw=3, mc=1, msize=1, mstyle=8,
-                      draw_options='colz', copy=False):
-        """
-        Arguments:
-        -> cpos: canvas index according to constructor or later addition
-        -> ppos: pad index inside a canvas according to constructor or later addition
-        -> h: Root histogram to plot
-        """
+    def setHistogram(self, cpos, ppos, h, 
+                      title='', xaxis_title='', yaxis_title='', 
+                     xranges=(None,None), yranges=(None,None),
+                      lc=1, lw=3, mc=1, msize=1, mstyle=8):
         self._c[cpos].cd()
         self._p[cpos][ppos].cd()       
         h.SetTitle(title)
         h.SetTitleOffset(.5)
         if xaxis_title != '':
             h.GetXaxis().SetTitle(xaxis_title)
+        h.GetXaxis().SetTitleOffset(1.2)
         if yaxis_title != '':
             h.GetYaxis().SetTitle(yaxis_title)
-        h.GetXaxis().SetTitleOffset(1.2)
         h.GetYaxis().SetTitleOffset(1.2)
+        if xranges != (None,None):
+            h.GetXaxis().SetRangeUser(xranges[0],xranges[1]);
+        if yranges != (None,None):
+            h.GetYaxis().SetRangeUser(yranges[0],yranges[1]);
         h.SetLineColor(lc)
         h.SetMarkerColor(mc)
         h.SetMarkerSize(msize)
         h.SetMarkerStyle(mstyle)
         h.SetLineWidth(lw)
+
+
+    def plotHistogram(self, cpos, ppos, h, 
+                      draw_options='colz', copy=False, hset=True, **kwargs):
+        """
+        Arguments:
+        -> cpos: canvas index according to constructor or later addition
+        -> ppos: pad index inside a canvas according to constructor or later addition
+        -> h: Root histogram to plot
+        """
+        if hset:
+            self.setHistogram(cpos, ppos, h, **kwargs)
         if copy:
             h.DrawCopy(draw_options)
         else:
@@ -211,7 +280,7 @@ class RootPlotting:
                           .format(round(f.GetParameter(2),4), round(f.GetParError(2),4)))
 
     def save(self, cpos, name):
-        self._c[cpos].SaveAs(name+'.png')
+        self._c[cpos].SaveAs(name)
 
     def saveAll(self, name):
         for _i in range(len(self._c)):

@@ -10,10 +10,15 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
     """
     Provides all methods required to correct incomplete showers.
     """
-    def __init__(self, fname, etavalues):
+    def __init__(self, fname, discrvals):
+        """
+        Arguments:
+        -> fname: file where the weights are stored.
+        -> discrvals: discriminatory values used to create background categories.
+        """
         super(IncompleteShowersCorrection, self).__init__()
-        self.etavalues_ = etavalues
-        self.netaintervals_ = len(self.etavalues_)
+        self.discrvals_ = discrvals
+        self.ndiscrintervals_ = len(self.discrvals_)
         self.wn = [['weight1_sr1', 'weight2_sr1', 'weight3_sr1'],
                    ['weight1_sr2', 'weight2_sr2', 'weight3_sr2'],
                    ['weight1_sr3', 'weight2_sr3', 'weight3_sr3']]
@@ -24,34 +29,34 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
                         ['en2_per_layer_bckg1','en2_per_layer_bckg2','en2_per_layer_bckg3'],
                         ['en3_per_layer_bckg1','en3_per_layer_bckg2','en3_per_layer_bckg3']]
         for ireg in range(self.nsr):
-            assert len(self.hn_bckg[ireg]) == self.netaintervals_
+            assert len(self.hn_bckg[ireg]) == self.ndiscrintervals_
         self.f_ = TFile.Open(fname)
 
         self.weights_ = []
         for ireg in range(self.nsr):
-            assert len(self.wn[ireg]) == self.netaintervals_
+            assert len(self.wn[ireg]) == self.ndiscrintervals_
             self.weights_.append([])
-            for iw in range(self.netaintervals_):
+            for iw in range(self.ndiscrintervals_):
                 h = self.f_.Get(self.wn[ireg][iw])
                 self.weights_[ireg].append([])
                 for j in range(1,self.nlayers+1):
                     b = h.FindBin(j)
                     self.weights_[ireg][iw].append(h.GetBinContent(b))
 
-    def getCorrectionWeights(self):
+    def CorrectionWeights(self):
         return self.weights_
 
     def buildCorrectionWeightsGraphs(self, region):
         g = []
         for il in range(self.nlayers):
-            g.append(TGraph(self.netaintervals_))
-            for iw in range(self.netaintervals_):
-                x = Double(self.etavalues_[iw])
+            g.append(TGraph(self.ndiscrintervals_))
+            for iw in range(self.ndiscrintervals_):
+                x = Double(self.discrvals_[iw])
                 y = Double(self.weights_[region-1][iw][il])
                 g[il].SetPoint(iw, x, y)
         return g
 
-    def getHistogramsMaxima(self):
+    def HistogramsMaxima(self):
         hvals = []
         for i in range(self.nsr):
             tmp = []
@@ -78,14 +83,14 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
         for ireg in range(self.nsr):
             h.append([])
             corr_graphs.append([])
-            for iw in range(self.netaintervals_):
+            for iw in range(self.ndiscrintervals_):
                 h[ireg].append(self.f_.Get(self.hn_bckg[ireg][iw]))
                 corr_graphs[ireg].append(TGraph(h[ireg][iw].GetNbinsX()))
 
         for ireg in range(self.nsr):
             graphs = RootHistograms(h[ireg]).toGraph()
-            assert len(graphs) == self.netaintervals_
-            for iw in range(self.netaintervals_):
+            assert len(graphs) == self.ndiscrintervals_
+            for iw in range(self.ndiscrintervals_):
                 for j in range(graphs[iw].GetN()):
                     x, y = Double(0.), Double(0.) #pass by reference
                     graphs[iw].GetPoint(j,x,y)
@@ -118,3 +123,23 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
             h.Delete()
         return f
     
+    def DifferentiateShowersByEnergy(self, current, standard, thresholds, min_val):
+        """
+        Returns:
+        -> 0: the shower is complete.
+        -> 1,2,...: each background category.
+        """
+        assert len(current) == len(standard)
+        cumdiff = 0.
+        for i in range(len(current)):
+            if standard[i] < min_val:
+                continue
+            cumdiff += abs(standard[i] - current[i])
+        if cumdiff < thresholds[0]:
+            return 0
+        th_shift = np.roll(thresholds, shift=-1)[:-1]
+        for it1,it2 in zip(thresholds[:-1],th_shift):
+            if cumdiff >= it1 and cumdiff < it2:
+                return np.where(th_shift == it2)[0][0] + 1
+        if cumdiff >= thresholds[-1]:
+            return np.where(th_shift == it2)[0][0] + 2
