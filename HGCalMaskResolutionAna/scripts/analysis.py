@@ -417,7 +417,7 @@ def main():
                     [0.34,0.005,0.66,0.245],
                     [0.67,0.005,0.99,0.245]]]
         cdims = [[1600,2000]]
-        picname = '1comp_'+FLAGS.samples
+        picname = '1comp_'+FLAGS.samples+'_'+FLAGS.method
         if FLAGS.apply_weights:
             picname += '_corrected' 
     else:
@@ -428,7 +428,7 @@ def main():
                     [0.34,0.01,0.66,0.49],   
                     [0.67,0.01,0.99,0.49]]]
         cdims = [[1000,600]]
-        picname = '2comp_'+FLAGS.samples
+        picname = '2comp_'+FLAGS.samples+'_'+FLAGS.method
         if FLAGS.apply_weights:
             picname += '_corrected' 
     
