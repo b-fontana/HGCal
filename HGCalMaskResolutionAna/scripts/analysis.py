@@ -56,7 +56,6 @@ def plotHistograms(histos, cdims, pcoords, cname):
 
         elif FLAGS.mode == 2:
             if FLAGS.apply_weights:
-                extra = '_ed' if len(etaregions)==2 else '_fineeta'
                 legends1 = [TLegend(0.12, 0.76, 0.44, 0.89) for  _ in range(3)]
             else:
                 legends1 = [TLegend(0.56, 0.66, 0.86, 0.89) for  _ in range(3)]
@@ -147,9 +146,8 @@ def plotHistograms(histos, cdims, pcoords, cname):
         plot.save(cpos=0, name=cname)
 
     if not FLAGS.apply_weights:
-        extra = '_ed' if len(etaregions)==2 else '_fineeta'
         save_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                     FLAGS.samples+'_mode'+str(FLAGS.mode)+extra )
+                     FLAGS.samples+'_mode'+str(FLAGS.mode)+'_'+FLAGS.method )
         RootHistograms(histos).save(save_str)
         RootHistograms(hdiv).save(save_str, mode='UPDATE')
 
@@ -161,20 +159,18 @@ def main():
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
 
-    """
     calibration = Calibration(FLAGS.mingenen, etaregions,
                               FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
     calibration.L0L1Calibration(FLAGS.noPUFile)
-    with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_nopu.pck','w') as cachefile:
+    calib_str = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_nopu.pck'
+    with open(calib_str, 'w') as cachefile:
         pickle.dump(calibration.calib, cachefile, pickle.HIGHEST_PROTOCOL)
-    """
-    with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_nopu.pck','r') as cachefile:
+    with open(calib_str, 'r') as cachefile:
         calib = pickle.load(cachefile)
 
     if FLAGS.apply_weights:
-        extra = '_ed' if len(etaregions)==2 else '_fineeta'
         calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                             FLAGS.samples+'_mode2'+extra)
+                             FLAGS.samples+'_mode2_'+FLAGS.method)
         bckgcuts_extended = np.append(bckgcuts, 0.9)
         showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
                                                  discrvals=Av(bckgcuts_extended))
@@ -340,9 +336,8 @@ def main():
 
                 lshift = [.65, .59, .48] #layer shift
                 assert len(bckgcuts) == len(lshift)
-                extra = '_ed' if len(etaregions)==2 else '_fineeta'
                 calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                                     FLAGS.samples+'_mode2'+extra )
+                                     FLAGS.samples+'_mode2_'+FLAGS.method )
                 c = IncompleteShowersCorrection(calibshowers_str+'.root', 
                                                 discrvals=[-1, -1, -1])
                 showerid = c.DifferentiateShowersByEnergy(ROI_en, fracEn[ireg-1,:], 
@@ -468,8 +463,8 @@ def main():
                        os.path.join(FLAGS.outpath,picname+'.png'))
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
-            fOut = TFile('allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+extra+'.root', 
-                         'RECREATE')
+            fstr = 'allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'_'+FLAGS.method+'.root'
+            fOut = TFile(fstr, 'RECREATE')
             fOut.cd()
             for ireg in range(NREG):
                 str1 = hn[4].format(ireg+1)
@@ -542,7 +537,9 @@ if __name__ == "__main__":
     parser.print_args()
     base = PartialWafersStudies()
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
-    etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
-    #etaregions = [2.7, 2.94]
+    if FLAGS.method == 'fineeta':
+        etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+    elif FLAGS.method == 'ed':
+        etaregions = [2.7, 2.94]
     bckgcuts = np.array(FLAGS.bckgcuts)
     main()

@@ -7,16 +7,18 @@ from ROOT import gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskResolutionAna.Calibration import Calibration
 
 def main():
-    calibration = Calibration(FLAGS.mingenen, [1.6, 2.93, 2.96],
+    calibration = Calibration(FLAGS.mingenen, etaregions,
                               FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
     calibration.L0L1Calibration(FLAGS.noPUFile)
-    print(calibration.calib)
+
     if FLAGS.PUFile != '':
+        str_pu = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_pu{}.pck'
         calibration.PUCalibration(FLAGS.PUFile)
-        with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_pu{}.pck'.format(FLAGS.puTag),'w') as cachefile:
+        with open(calib_str_pu.format(FLAGS.puTag),'w') as cachefile:
             pickle.dump(calibration.calib, cachefile, pickle.HIGHEST_PROTOCOL)
     else:
-        with open('calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+'_nopu.pck','w') as cachefile:
+        str_nopu = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_nopu.pck'
+        with open(calib_str_nopu,'w') as cachefile:
             pickle.dump(calibration.calib, cachefile, pickle.HIGHEST_PROTOCOL)
 
 
@@ -28,5 +30,10 @@ if __name__ == "__main__":
     parser = Argparser.Argparser()
     FLAGS = parser.get_flags()
     parser.print_args()
+
+    if FLAGS.method == 'fineeta':
+        etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+    elif FLAGS.method == 'ed':
+        etaregions = [2.7, 2.94]
 
     main()
