@@ -9,13 +9,13 @@ from UserCode.HGCalMaskResolutionAna.RootTools import buildMedianProfile
 from UserCode.HGCalMaskVisualProd.SystemUtils import EtaStr as ES
 
 class Calibration(PartialWafersStudies, object):
-    def __init__(self, mingenen, eta_regions, 
+    def __init__(self, mingenen, etaregions, 
                  label, samples, mask, outpath):
         super(Calibration, self).__init__()
         self.calib = OrderedDict({'L0': {}, 'L1': {}, 'L2': {}})
         self.mingenen = mingenen
-        self.etas_l = eta_regions[:-1]
-        self.etas_r = np.roll(eta_regions, shift=-1)[:-1]
+        self.etas_l = etaregions[:-1]
+        self.etas_r = np.roll(etaregions, shift=-1)[:-1]
         self.label = label
         self.samples = samples
         self.mask = str(mask)
@@ -73,7 +73,8 @@ class Calibration(PartialWafersStudies, object):
                 recen = getattr(data,'en_sr{}_ROI'.format(ireg))
                 avgnoise = ( getattr(data,'noise_sr3_ROI')
                              *self.sr_area[ireg-1]/self.sr_area[2] )
-                x[self.etas_l.index(ieta1)].append( [genen, geneta, recen, avgnoise] )
+                npidx = np.where(self.etas_l==ieta1)[0][0]
+                x[npidx].append( [genen, geneta, recen, avgnoise] )
         return [np.array(x[i]) for i in range(len(x))]
 
 
@@ -83,11 +84,10 @@ class Calibration(PartialWafersStudies, object):
         """
         fIn = TFile.Open(f)
         data = fIn.Get('data')
-
         for ireg in [1,2,3]:
             x = self._EnergiesForCalibration(data, ireg)
             for ieta1,ieta2 in zip(self.etas_l, self.etas_r):
-                idx = self.etas_l.index(ieta1)
+                idx = np.where(self.etas_l==ieta1)[0][0]
                 idstr = 'sr{}_from{}to{}'.format(ireg, ES(ieta1), ES(ieta2))
                 xq = np.percentile(x[idx], [i*100./nq for i in range(0,nq+1)], axis=0)
             

@@ -103,19 +103,19 @@ def plotHistograms(histos, cdims, pcoords, cname):
                                        lw=3, mc=linec[3], msize=.5, lc=linec[3],
                                        draw_options='same E')
                     tex = plot.setLatex()
-                    th = [str(i) for i in bckgcuts]
+                    bckgcuts_str = [str(i) for i in bckgcuts]
                     if FLAGS.samples == 'inner':
                         tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
                     elif FLAGS.samples == 'outer':
                         tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
 
                     legends1[ih].AddEntry(histos[ih], 
-                                          'Cumdiff < '+th[0], 'L')
-                    for it in range(len(th)-1):
+                                          'Cumdiff < '+bckgcuts_str[0], 'L')
+                    for it in range(len(bckgcuts_str)-1):
                         legends1[ih].AddEntry(histos[ih+3*(it+1)], 
-                                              th[it]+'< Cumdiff < '+th[it+1], 'L')
+                                    bckgcuts_str[it]+'< Cumdiff < '+bckgcuts_str[it+1], 'L')
                     legends1[ih].AddEntry(histos[ih+3*(it+2)], 
-                                          'Cumdiff > '+th[it+1], 'L')
+                                    'Cumdiff > '+bckgcuts_str[it+1], 'L')
 
                     tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
                     tex.SetTextAlign(31)
@@ -124,10 +124,10 @@ def plotHistograms(histos, cdims, pcoords, cname):
                     hdiv.append(histos[ih+3].Clone('weight1_sr{}'.format(ih+1)))
                     hdiv.append(histos[ih+6].Clone('weight2_sr{}'.format(ih+1)))
                     hdiv.append(histos[ih+9].Clone('weight3_sr{}'.format(ih+1)))
-                    for idiv in range(len(th)-1):
+                    for idiv in range(len(bckgcuts)):
                         hdiv[-3+idiv].Divide(histos[ih])
                         extrastr = '' if idiv==0 else 'same'
-                        hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 2.)
+                        hdiv[-3+idiv].GetYaxis().SetRangeUser(0., 6.)
                         plot.plotHistogram(cpos=0, ppos=ih+3, h=hdiv[-3+idiv],
                                            yaxis_title='Weight',
                                            lw=3, mc=linec[idiv+1], msize=.5, 
@@ -138,7 +138,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
                         tex.DrawLatex(0.58,0.92,'Inner radius;  SR{}'.format((ih%3)+1))
                     elif FLAGS.samples == 'outer':
                         tex.DrawLatex(0.58,0.92,'Outer radius;  SR{}'.format((ih%3)+1))
-                    for iv in range(len(th)-1):
+                    for iv in range(len(bckgcuts)):
                         legends2[ih].AddEntry(hdiv[iv], 'weight'+str(iv+1), 'L')
                         legends2[ih].Draw()
                     tex.DrawLatex(0.11,0.92,'#bf{CMS} #it{simulation preliminary}')
@@ -159,7 +159,6 @@ def main():
 
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
-
     calibration = Calibration(FLAGS.mingenen, etaregions,
                               FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
     calibration.L0L1Calibration(FLAGS.noPUFile)
@@ -176,19 +175,22 @@ def main():
         showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
                                                  discrvals=Av(bckgcuts_extended))
         weights = showercorr.CorrectionWeights()
-        boundaries = [5, 5, 5]
-        corr_mode = 'right' if FLAGS.samples == 'outer' else 'left'
+        if FLAGS.samples == 'inner':
+            boundaries = [5, 5, 5]
+            corr_mode = 'left' 
+        elif FLAGS.samples == 'outer':
+            boundaries = [23, 23, 23]
+            corr_mode = 'right' 
         lowstats_factors = showercorr.calculateLowStatisticsFactor(boundaries, corr_mode)
         weights_graphs = [showercorr.buildCorrectionWeightsGraphs(region=i+1)
                           for i in range(NREG)]
 
     histos=OrderedDict()
+    enbins, eninf, ensup = 200, -2.01, 1.99
     if FLAGS.samples == 'inner':
         phibins, etabins, etainf, etasup = 12, 10, 2.69, 3.04
-        enbins, eninf, ensup = 200, -2.01, 1.99
     elif FLAGS.samples == 'outer':
-        phibins, etabins, etainf, etasup, enbins = 12, 10, 1.44, 1.66
-        enbins, eninf, ensup = 200, -2.01, 1.99
+        phibins, etabins, etainf, etasup = 12, 10, 1.44, 1.66
 
     if FLAGS.mode == 1:
         hn = ['den{}', 'den_eta{}', 'rms_eta{}', 'bias_eta{}', 'indep_eta{}',
@@ -335,7 +337,7 @@ def main():
                     except ZeroDivisionError:
                         ROI_en[il-1] = 0.
 
-                lshift = [.65, .59, .48] #layer shift
+                lshift = [1., 1., 1.] if FLAGS.samples == 'outer' else [.65, .59, .48] #layer shift
                 assert len(bckgcuts) == len(lshift)
                 showerid = DifferentiateShowersByEnergy(ROI_en, fracEn[ireg-1,:], 
                                                         thresholds=bckgcuts, min_val=0.05)
@@ -535,9 +537,9 @@ if __name__ == "__main__":
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     if FLAGS.method == 'fineeta':
         if FLAGS.samples == 'inner':
-            etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+            etaregions = np.linspace(2.7, 3.03, 331)
         elif FLAGS.samples == 'outer':
-            etaregions = np.round(np.arange(1.45,1.651,0.001).tolist(), 3).tolist()
+            etaregions = np.linspace(1.45, 1.65, 201)
     elif FLAGS.method == 'ed':
         if FLAGS.samples == 'inner':
             etaregions = [2.7, 2.94]
