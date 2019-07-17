@@ -11,6 +11,7 @@ from ROOT import gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskVisualProd.SystemUtils import averageContiguousVals as Av
 from UserCode.HGCalMaskVisualProd.SystemUtils import EtaStr as ES
 from UserCode.HGCalMaskResolutionAna.SoftwareCorrection import IncompleteShowersCorrection
+from UserCode.HGCalMaskResolutionAna.SoftwareCorrection import DifferentiateShowersByEnergy
 from UserCode.HGCalMaskResolutionAna.Calibration import Calibration
 from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 from UserCode.HGCalMaskVisualProd.RootPlotting import RootPlotting
@@ -336,12 +337,8 @@ def main():
 
                 lshift = [.65, .59, .48] #layer shift
                 assert len(bckgcuts) == len(lshift)
-                calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                                     FLAGS.samples+'_mode2_'+FLAGS.method )
-                c = IncompleteShowersCorrection(calibshowers_str+'.root', 
-                                                discrvals=[-1, -1, -1])
-                showerid = c.DifferentiateShowersByEnergy(ROI_en, fracEn[ireg-1,:], 
-                                                          thresholds=bckgcuts, min_val=0.05)
+                showerid = DifferentiateShowersByEnergy(ROI_en, fracEn[ireg-1,:], 
+                                                        thresholds=bckgcuts, min_val=0.05)
 
                 ###Calculate andc calibrate the energy per layer###
                 recen_corr = 0 
@@ -394,7 +391,7 @@ def main():
                         histos[hn[1].format(ireg)].Fill(deltaE_corr)
                     else:
                         recen_corr *= (1 / (1-lowstats_factors[ireg-1]) )
-                        recen_corr *= 1/.1
+                        recen_corr *= 1/.09
                         deltaE_corr = recen_corr/genen-1.
                         if deltaE>-.95 and deltaE<-0.1:
                             histos[hn[2].format(ireg)].Fill(deltaE)
@@ -520,7 +517,6 @@ def main():
                         [0.34,0.005,0.66,0.195],
                         [0.67,0.005,0.99,0.195]]]
             cdims = [[1600,2000]]
-            print('2: ', ht)
             plotHistograms(ht, cdims, pcoords, 
                            os.path.join(FLAGS.outpath,picname+'_total.png'))
             fOut.Write()
@@ -538,8 +534,14 @@ if __name__ == "__main__":
     base = PartialWafersStudies()
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     if FLAGS.method == 'fineeta':
-        etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+        if FLAGS.samples == 'inner':
+            etaregions = np.round(np.arange(2.7,3.031,0.001).tolist(), 3).tolist()
+        elif FLAGS.samples == 'outer':
+            etaregions = np.round(np.arange(1.45,1.651,0.001).tolist(), 3).tolist()
     elif FLAGS.method == 'ed':
-        etaregions = [2.7, 2.94]
+        if FLAGS.samples == 'inner':
+            etaregions = [2.7, 2.94]
+        elif FLAGS.samples == 'outer':
+            etaregions = [1.55, 1.65]
     bckgcuts = np.array(FLAGS.bckgcuts)
     main()

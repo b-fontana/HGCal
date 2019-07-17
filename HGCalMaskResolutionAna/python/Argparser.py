@@ -10,18 +10,6 @@ class Argparser():
             help='Minimum energy of the generated particle.'
         )
         self.p.add_argument(
-            '--mingeneta',
-            type=float,
-            default=1.6,
-            help='Minimum pseudo-rapidity (eta) of the generated particle.'
-        )
-        self.p.add_argument(
-            '--maxgeneta',
-            type=float,
-            default=3.2,
-            help='Maximum pseudo-rapidity (eta) of the generated particle.'
-        )
-        self.p.add_argument(
             '--bckgcuts',
             nargs='+',
             type=float,
