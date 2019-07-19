@@ -6,8 +6,8 @@ from array import array as Carray
 from collections import OrderedDict
 
 from ROOT import TCanvas, TLatex, TFile, TMath, TH1F
-from ROOT import TLegend, TH2F, TLorentzVector, TProfile, TH1D
-from ROOT import gStyle, gROOT, kTemperatureMap
+from ROOT import TLegend, TH2F, TLorentzVector, TProfile, TH1D, TGraphErrors
+from ROOT import Double, gStyle, gROOT, kTemperatureMap
 from UserCode.HGCalMaskVisualProd.SystemUtils import averageContiguousVals as Av
 from UserCode.HGCalMaskVisualProd.SystemUtils import EtaStr as ES
 from UserCode.HGCalMaskResolutionAna.SoftwareCorrection import IncompleteShowersCorrection
@@ -38,22 +38,22 @@ def plotHistograms(histos, cdims, pcoords, cname):
         if FLAGS.mode == 1:
             legends1 = [TLegend(0.12, 0.76, 0.44, 0.89) for  _ in range(3)]
             it = -1
-            for ih in range(len(histos[-3])):
+            for ih in range(len(histos[:-3])):
                 if ih%3==0: it += 1
                 h = histos[ih]
-                plot.plotHistogram(cpos=0, ppos=ih, h=h, 
-                                   title=titles[it], draw_options='colz')
-                tex = plot.setLatex(ts=0.04)
-                if ih<3:
-                    plot.fitHistogwram(h=h, fname='crystalball', 
-                                      frange=(-1.,1.), tex=tex)
-
-                if FLAGS.samples == 'inner':
-                    pass
-                    #tex.DrawLatex(0.75,0.93,' |#eta| < '+str(FLAGS.maxgeneta))
-                elif FLAGS.samples == 'outer':
-                    pass
-                    #tex.DrawLatex(0.75,0.93,' |#eta| > '+str(FLAGS.mingeneta))
+                if ih<6:
+                    plot.plotHistogram(cpos=0, ppos=ih, h=h, 
+                                       title=titles[it], draw_options='colz')
+                    if ih<3:
+                        tex = plot.setLatex(ts=0.04)
+                        plot.fitHistogram(h=h, fname='crystalball', 
+                                          frange=(-1.,1.), tex=tex)
+                else:
+                    plot.plotGraph(cpos=0, ppos=ih, g=h, 
+                                   lw=3,mc=4,msize=.5,lc=4, 
+                                   yranges=(-0.5,3.5),
+                                   title=titles[it],
+                                   draw_options='AP')
 
         elif FLAGS.mode == 2:
             if FLAGS.apply_weights:
@@ -70,11 +70,18 @@ def plotHistograms(histos, cdims, pcoords, cname):
                             plot.plotHistogram(cpos=0, ppos=idx, h=histos[idx], 
                                                lw=3,mc=4,msize=.5,lc=4, 
                                                draw_options='colz')
-                        else:
+                        elif ixx == 1:
                             plot.plotHistogram(cpos=0, ppos=idx, h=histos[idx], 
                                                lw=3,mc=4,msize=.5,lc=4, 
                                                title=titles[ixx],
                                                draw_options='colz')
+                        else:
+                            plot.plotGraph(cpos=0, ppos=idx, g=histos[idx], 
+                                           lw=3,mc=4,msize=.5,lc=4, 
+                                           yranges=(-0.5,3.5),
+                                           title=titles[ixx],
+                                           name = str(ixx*ih),
+                                           draw_options='AP')
                         tex = plot.setLatex()
                         if ixx == 0:
                             plot.fitHistogram(h=histos[idx], fname='crystalball', 
@@ -159,12 +166,13 @@ def main():
 
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
+    calib_str = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_nopu.pck'
+    """
     calibration = Calibration(FLAGS.mingenen, etaregions,
                               FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
     calibration.L0L1Calibration(FLAGS.noPUFile)
-    calib_str = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_nopu.pck'
-    with open(calib_str, 'w') as cachefile:
-        pickle.dump(calibration.calib, cachefile, pickle.HIGHEST_PROTOCOL)
+    calibration.save(calib_str)
+    """
     with open(calib_str, 'r') as cachefile:
         calib = pickle.load(cachefile)
 
@@ -193,24 +201,17 @@ def main():
         phibins, etabins, etainf, etasup = 12, 10, 1.44, 1.66
 
     if FLAGS.mode == 1:
-        hn = ['den{}', 'den_eta{}', 'rms_eta{}', 'bias_eta{}', 'indep_eta{}',
-              'den{}_2D_res', 'den{}_2D_events']
+        hn = ['den{}', 'den_eta{}', 'den{}_2D_res', 'den{}_2D_events']
         for ireg in range(1,NREG+1):
             histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg),';#Delta E/E;PDF',
                                                   100, -1.1, .8)
             histos[hn[1].format(ireg)] = TH2F(hn[1].format(ireg), ';|#eta|;#Delta E/E',
                                                   etabins, etainf, etasup,
                                                   enbins, eninf, ensup)
-            histos[hn[2].format(ireg)] = TH1F(hn[2].format(ireg),';|#eta|;RMS',
-                                              etabins, etainf, etasup)
-            histos[hn[3].format(ireg)] = TH1F(hn[3].format(ireg),';|#eta|;Bias',
-                                              etabins, etainf, etasup)
-            histos[hn[4].format(ireg)] = TH1F(hn[4].format(ireg),';|#eta|;RMS / (1 + Bias)',
-                                              etabins, etainf, etasup)
-            histos[hn[5].format(ireg)] = TH2F(hn[5].format(ireg), ';|#eta|;#phi',
+            histos[hn[2].format(ireg)] = TH2F(hn[2].format(ireg), ';|#eta|;#phi',
                                               50, etainf, etasup,
                                               phibins, -TMath.Pi(), TMath.Pi())
-            histos[hn[6].format(ireg)] = TH2F(hn[6].format(ireg), ';|#eta|;#phi',
+            histos[hn[3].format(ireg)] = TH2F(hn[3].format(ireg), ';|#eta|;#phi',
                                               50, etainf, etasup,
                                               phibins, -TMath.Pi(), TMath.Pi())
     elif FLAGS.mode == 2:
@@ -324,8 +325,8 @@ def main():
                 if deltaE > -1:
                     histos[hn[0].format(ireg)].Fill(deltaE)
                     histos[hn[1].format(ireg)].Fill(geneta, deltaE)
-                histos[hn[5].format(ireg)].Fill(geneta, genphi, deltaE)
-                histos[hn[6].format(ireg)].Fill(geneta, genphi)
+                histos[hn[2].format(ireg)].Fill(geneta, genphi, deltaE)
+                histos[hn[3].format(ireg)].Fill(geneta, genphi)
 
             elif FLAGS.mode == 2:
                 #differentiate complete from incomplete showers
@@ -386,14 +387,15 @@ def main():
                         except ZeroDivisionError:
                             histos[hn[13+w].format(ireg)].Fill(b,0.)
 
-                if FLAGS.apply_weights:
+                if FLAGS.apply_weights and FLAGS.method == 'ed':
                     if showerid==0: #complete shower
                         deltaE_corr = recen_corr/genen-1.
                         histos[hn[0].format(ireg)].Fill(deltaE)
                         histos[hn[1].format(ireg)].Fill(deltaE_corr)
                     else:
                         recen_corr *= (1 / (1-lowstats_factors[ireg-1]) )
-                        recen_corr *= 1/.09
+                        distshift = 0.09 if FLAGS.samples == 'inner' else 0.08
+                        recen_corr *= 1/distshift
                         deltaE_corr = recen_corr/genen-1.
                         if deltaE>-.95 and deltaE<-0.1:
                             histos[hn[2].format(ireg)].Fill(deltaE)
@@ -440,24 +442,36 @@ def main():
     histos = [histos[correct_order[i]] for i in range(len(correct_order))]
 
     if FLAGS.mode == 1:
-        histos.append(histos[15].Clone())
-        histos.append(histos[16].Clone())
-        histos.append(histos[17].Clone())
-        histos[-3].Divide(histos[18])
-        histos[-2].Divide(histos[19])
-        histos[-1].Divide(histos[20])
+        histos.append(histos[6].Clone())
+        histos.append(histos[7].Clone())
+        histos.append(histos[8].Clone())
+        histos[-3].Divide(histos[9])
+        histos[-2].Divide(histos[10])
+        histos[-1].Divide(histos[11])
 
-        histos = histos[:-9]
+        histos = histos[:6]
         for ireg in range(NREG):
             h = histos[3+ireg]
+            xbins, exbins, rms, erms, bias, ebias = ([] for _ in range(6))
             for xbin in xrange(1,h.GetNbinsX()+1):
                 tmp = h.ProjectionY('tmp', xbin, xbin)
-                rms = tmp.GetRMS()
-                bias = tmp.GetMean()
-                histos[6+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms)
-                histos[9+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), bias)
-                histos[12+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms/(1+bias))
+                xbins.append(h.GetXaxis().GetBinCenter(xbin))
+                horizerror = ( h.GetXaxis().GetBinCenter(1) - 
+                               h.GetXaxis().GetBinLowEdge(1) )
+                exbins.append( horizerror )
+                rms.append(tmp.GetRMS())
+                erms.append(tmp.GetRMSError())
+                bias.append(tmp.GetMean())
+                ebias.append(tmp.GetMeanError())
                 tmp.Delete()
+            xbins, exbins = np.array(xbins), np.array(exbins)
+            rms, erms = np.array(rms), np.array(erms)
+            bias, ebias = np.array(bias), np.array(ebias)
+            indep = rms/(1.+bias)
+            eindep = indep * np.sqrt( erms**2/rms**2 + ebias**2/(1+bias**2)  )
+            histos.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
+            histos.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
+            histos.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
         plotHistograms(histos, cdims, pcoords, 
                        os.path.join(FLAGS.outpath,picname+'.png'))
     elif FLAGS.mode == 2:
@@ -485,24 +499,38 @@ def main():
                            os.path.join(FLAGS.outpath,picname+'_incomplete.png'))
 
             ht = histos_total[3:] + histos_res2D_after #res 1D + res 2D
-            ss1 = ['rms_vs_eta_after{}', 'bias_vs_eta_after{}', 'indep_vs_eta_after{}']
-            ss2 = ['RMS vs Eta;|#eta|;RMS', 'Bias vs Eta', 'RMS/(1+Bias) vs Eta']
-            for s1,s2 in zip(ss1,ss2):
-                for ireg in range(1,NREG+1):
-                    ht.append( TH1F(s1.format(ireg), s2, etabins, etainf, etasup) )
             for ireg in range(NREG):
                 h = ht[3+ireg]
+                xbins, exbins, rms, erms, bias, ebias = ([] for _ in range(6))
                 for xbin in xrange(1,h.GetNbinsX()+1):
                     tmp = h.ProjectionY('tmp', xbin, xbin)
-                    rms = tmp.GetRMS()
-                    bias = tmp.GetMean()
-                    ht[6+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms)
-                    ht[9+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), bias)
-                    ht[12+ireg].Fill(h.GetXaxis().GetBinCenter(xbin), rms/(1+bias))
+                    xbins.append(h.GetXaxis().GetBinCenter(xbin))
+                    horizerror = ( h.GetXaxis().GetBinCenter(1) - 
+                                   h.GetXaxis().GetBinLowEdge(1) )
+                    exbins.append( horizerror )
+                    rms.append(tmp.GetRMS())
+                    erms.append(tmp.GetRMSError())
+                    bias.append(tmp.GetMean())
+                    ebias.append(tmp.GetMeanError())
                     tmp.Delete()
+                xbins, exbins = np.array(xbins), np.array(exbins)
+                rms, erms = np.array(rms), np.array(erms)
+                bias, ebias = np.array(bias), np.array(ebias)
+                indep = rms/(1.+bias)
+                eindep = indep * np.sqrt( erms**2/rms**2 + ebias**2/(1+bias**2)  )
+                ht.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
+                ht.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
+                ht.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
+
             fOut.cd()
-            for h in ht:
-                h.Write()                
+
+            ht_tmp = ht[-3*NREG:]
+            ht_titles = ['rmsVSeta{}', 'biasVSeta{}', 'indepVSeta{}'] * 3
+            indices = [1, 2, 3] * 3
+            indices.sort()
+            for ih,h in enumerate(ht_tmp):
+                h.SetName(ht_titles[ih].format(indices[ih]))
+                h.Write(ht_titles[ih].format(indices[ih]))
             pcoords = [[[0.01,0.805,0.33,0.995],   
                         [0.34,0.805,0.66,0.995],   
                         [0.67,0.805,0.99,0.995],
@@ -533,6 +561,8 @@ if __name__ == "__main__":
     parser = Argparser.Argparser()
     FLAGS = parser.get_flags()
     parser.print_args()
+    if FLAGS.apply_weights and FLAGS.mode != 2:
+        raise ValueError('The weights can only be used when mode==2.')
     base = PartialWafersStudies()
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     if FLAGS.method == 'fineeta':
@@ -542,8 +572,8 @@ if __name__ == "__main__":
             etaregions = np.linspace(1.45, 1.65, 201)
     elif FLAGS.method == 'ed':
         if FLAGS.samples == 'inner':
-            etaregions = [2.7, 2.94]
+            etaregions = np.array((2.7, 2.94))
         elif FLAGS.samples == 'outer':
-            etaregions = [1.55, 1.65]
+            etaregions = np.array((1.55, 1.65))
     bckgcuts = np.array(FLAGS.bckgcuts)
     main()
