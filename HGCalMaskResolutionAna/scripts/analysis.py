@@ -449,7 +449,7 @@ def main():
         histos[-2].Divide(histos[10])
         histos[-1].Divide(histos[11])
 
-        histos = histos[:6]
+        htmp = []
         for ireg in range(NREG):
             h = histos[3+ireg]
             xbins, exbins, rms, erms, bias, ebias = ([] for _ in range(6))
@@ -469,11 +469,30 @@ def main():
             bias, ebias = np.array(bias), np.array(ebias)
             indep = rms/(1.+bias)
             eindep = indep * np.sqrt( erms**2/rms**2 + ebias**2/(1+bias**2)  )
-            histos.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
-            histos.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
-            histos.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
+            htmp.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
+            htmp.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
+            htmp.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
+
+        ht_tmp = [htmp[0],htmp[3],htmp[6],htmp[1],htmp[4],htmp[7],htmp[2],htmp[5],htmp[8]]
+        histos = histos[:6] + ht_tmp
+        if FLAGS.method == 'fineeta':
+            htitles = ['rmsVSeta1',  'rmsVSeta2',  'rmsVSeta3',
+                       'biasVSeta1', 'biasVSeta2', 'biasVSeta3',
+                       'indepVSeta1','indepVSeta2','indepVSeta3']
+            indices = [1, 2, 3] * 3
+            indices.sort()
+            fstr = 'allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'_'+FLAGS.method+'.root'
+            fOut = TFile(fstr, 'RECREATE')
+            fOut.cd()
+            for ih,h in enumerate(ht_tmp):
+                h.SetName(htitles[ih])
+                h.Write(htitles[ih])
+            fOut.Write()
+            fOut.Close()
+
         plotHistograms(histos, cdims, pcoords, 
                        os.path.join(FLAGS.outpath,picname+'.png'))
+
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
             fstr = 'allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'_'+FLAGS.method+'.root'
@@ -499,6 +518,7 @@ def main():
                            os.path.join(FLAGS.outpath,picname+'_incomplete.png'))
 
             ht = histos_total[3:] + histos_res2D_after #res 1D + res 2D
+            ht_tmp = []
             for ireg in range(NREG):
                 h = ht[3+ireg]
                 xbins, exbins, rms, erms, bias, ebias = ([] for _ in range(6))
@@ -518,19 +538,23 @@ def main():
                 bias, ebias = np.array(bias), np.array(ebias)
                 indep = rms/(1.+bias)
                 eindep = indep * np.sqrt( erms**2/rms**2 + ebias**2/(1+bias**2)  )
-                ht.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
-                ht.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
-                ht.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
+                ht_tmp.append( TGraphErrors(etabins, xbins, rms, exbins, erms) )
+                ht_tmp.append( TGraphErrors(etabins, xbins, bias, exbins, ebias) )
+                ht_tmp.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
 
             fOut.cd()
 
-            ht_tmp = ht[-3*NREG:]
-            ht_titles = ['rmsVSeta{}', 'biasVSeta{}', 'indepVSeta{}'] * 3
+            ht_tmp = [ht_tmp[-9],ht_tmp[-6],ht_tmp[-3],
+                      ht_tmp[-8],ht_tmp[-5],ht_tmp[-2],
+                      ht_tmp[-7],ht_tmp[-4],ht_tmp[-1]]
+            ht_titles = ['rmsVSeta1',  'rmsVSeta2',  'rmsVSeta3',
+                       'biasVSeta1', 'biasVSeta2', 'biasVSeta3',
+                       'indepVSeta1','indepVSeta2','indepVSeta3']
             indices = [1, 2, 3] * 3
             indices.sort()
             for ih,h in enumerate(ht_tmp):
-                h.SetName(ht_titles[ih].format(indices[ih]))
-                h.Write(ht_titles[ih].format(indices[ih]))
+                h.SetName(ht_titles[ih])
+                h.Write(ht_titles[ih])
             pcoords = [[[0.01,0.805,0.33,0.995],   
                         [0.34,0.805,0.66,0.995],   
                         [0.67,0.805,0.99,0.995],
@@ -547,6 +571,7 @@ def main():
                         [0.34,0.005,0.66,0.195],
                         [0.67,0.005,0.99,0.195]]]
             cdims = [[1600,2000]]
+            ht += ht_tmp
             plotHistograms(ht, cdims, pcoords, 
                            os.path.join(FLAGS.outpath,picname+'_total.png'))
             fOut.Write()
