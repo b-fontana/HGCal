@@ -29,8 +29,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
         raise TypeError('The histograms have to be passed in a list.,')
 
     npads = len(pcoords[0])
-    hdiv = []
-    stack = []
+    hdiv, stack = ([] for _ in range(2))
     with RootPlotting(ncanvas=1, npads=npads, cdims=cdims, pcoords=pcoords) as plot:
         titles = ['Resolution', 'Resolution vs Eta', 
                   'RMS vs Eta', 'Bias vs Eta', 'RMS/(1+Bias) vs Eta',
@@ -166,10 +165,11 @@ def main():
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
     calib_str = base.paths.calibrations_nopu
+    """
     calibration = Calibration(FLAGS)
     calibration.nopu_calibration()
     calibration.save(calib_str)
-
+    """
     with open(calib_str, 'r') as cachefile:
         calib = pickle.load(cachefile)
 
@@ -354,7 +354,7 @@ def main():
                         try:
                             histos[hn[8].format(ireg)].Fill(b,v/recen)
                         except ZeroDivisionError:
-                            histos[hn[9].format(ireg)].Fill(b,0.)
+                            histos[hn[8].format(ireg)].Fill(b,0.)
                         if FLAGS.apply_weights:
                             recen_corr += v
                         v = (f1*getattr(data,'noise_sr3_layer{}'.format(il))
@@ -477,8 +477,7 @@ def main():
                        'indepVSeta1','indepVSeta2','indepVSeta3']
             indices = [1, 2, 3] * 3
             indices.sort()
-            fstr = base.paths.plots
-            fOut = TFile(fstr, 'RECREATE')
+            fOut = TFile( base.paths.plots, 'RECREATE' )
             fOut.cd()
             for ih,h in enumerate(ht_tmp):
                 h.SetName(htitles[ih])
@@ -491,8 +490,7 @@ def main():
 
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
-            fstr = base.paths.plot
-            fOut = TFile(fstr, 'RECREATE')
+            fOut = TFile( base.paths.plots, 'RECREATE' )
             fOut.cd()
             for ireg in range(NREG):
                 str1 = hn[4].format(ireg+1)
@@ -539,13 +537,12 @@ def main():
                 ht_tmp.append( TGraphErrors(etabins, xbins, indep, exbins, eindep) )
 
             fOut.cd()
-
             ht_tmp = [ht_tmp[-9],ht_tmp[-6],ht_tmp[-3],
                       ht_tmp[-8],ht_tmp[-5],ht_tmp[-2],
                       ht_tmp[-7],ht_tmp[-4],ht_tmp[-1]]
             ht_titles = ['rmsVSeta1',  'rmsVSeta2',  'rmsVSeta3',
-                       'biasVSeta1', 'biasVSeta2', 'biasVSeta3',
-                       'indepVSeta1','indepVSeta2','indepVSeta3']
+                         'biasVSeta1', 'biasVSeta2', 'biasVSeta3',
+                         'indepVSeta1','indepVSeta2','indepVSeta3']
             indices = [1, 2, 3] * 3
             indices.sort()
             for ih,h in enumerate(ht_tmp):
@@ -587,5 +584,6 @@ if __name__ == "__main__":
     base = PartialWafersStudies(FLAGS)
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     etaregions = base.etaregions
-    bckgcuts = np.array(FLAGS.bckgcuts)
+    if FLAGS.mode == 'ed':
+        bckgcuts = np.array(FLAGS.bckgcuts)
     main()
