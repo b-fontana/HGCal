@@ -85,8 +85,8 @@ def main():
     hn_bckg = ['en1_per_layer_bckg1', 'en1_per_layer_bckg2', 'en1_per_layer_bckg3',
                'en2_per_layer_bckg1', 'en2_per_layer_bckg2', 'en2_per_layer_bckg3',
                'en3_per_layer_bckg1', 'en3_per_layer_bckg2', 'en3_per_layer_bckg3']
-    weights = getCorrectionWeights(FLAGS.noPUFile+'.root', hnames=wn)
-    fIn = TFile.Open(FLAGS.noPUFile+'.root')
+    weights = getCorrectionWeights(FLAGS.noPUFile, hnames=wn)
+    fIn = TFile.Open(FLAGS.noPUFile)
     
     hvalues = []
     for i in hn_sig:
@@ -99,7 +99,7 @@ def main():
     m = [m[x][0] for x in range(len(m))] #y values only
     print("Maxima: ", m)
 
-    correctedGraphs = correctIncompleteShowers(fname=FLAGS.noPUFile+'.root', hnames=hn_bckg,
+    correctedGraphs = correctIncompleteShowers(fname=FLAGS.noPUFile, hnames=hn_bckg,
                                                weights=weights, limits=m)
     pcoords = [[[0.01,0.755,0.33,0.995],
                 [0.34,0.755,0.66,0.995],
@@ -117,7 +117,7 @@ def main():
     picname = 'corrected_graphs_'+FLAGS.samples
 
     #Plotting    
-    fIn = TFile.Open(FLAGS.noPUFile+'.root')
+    fIn = TFile.Open(FLAGS.noPUFile)
     extrahistos = []
     extrahistos.append(fIn.Get('en1_per_layer_signal'))
     extrahistos.append(fIn.Get('en2_per_layer_signal'))
@@ -131,7 +131,7 @@ def main():
                            draw_options='APL')
         plot.save(cpos=0, name=picname)
 
-    factors = calculateLowStatisticsFactor(FLAGS.noPUFile+'.root', hn_sig, m)
+    factors = calculateLowStatisticsFactor(FLAGS.noPUFile, hn_sig, m)
     print("Factors: ", factors)
 
 if __name__ == "__main__":

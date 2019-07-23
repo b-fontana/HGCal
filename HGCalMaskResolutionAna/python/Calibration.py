@@ -1,20 +1,20 @@
 from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 
 class Calibration(PartialWafersStudies, object):
-    def __init__(self, mingenen, etaregions, 
-                 label, samples, mask, outpath):
+    def __init__(self, flags):
         import numpy as np
         from collections import OrderedDict
 
-        super(Calibration, self).__init__()
+        super(Calibration, self).__init__(flags)
         self.calib = OrderedDict({'L0': {}, 'L1': {}, 'L2': {}})
-        self.mingenen = mingenen
-        self.etas_l = etaregions[:-1]
-        self.etas_r = np.roll(etaregions, shift=-1)[:-1]
-        self.label = label
-        self.samples = samples
-        self.mask = str(mask)
-        self.outpath = outpath
+        self.mingenen = self.flags.mingenen
+        print(self.etaregions)
+        self.etas_l = self.etaregions[:-1]
+        self.etas_r = np.roll(self.etaregions, shift=-1)[:-1]
+        self.label = self.flags.plotLabel
+        self.samples = self.flags.samples
+        self.mask = str(self.flags.mask)
+        self.outpath = self.flags.outpath
 
     def _calibrate_spectrum(self, h, title, proc, func='pol1', plot=True):
         """
@@ -78,7 +78,7 @@ class Calibration(PartialWafersStudies, object):
         return [np.array(x[i]) for i in range(len(x))]
 
 
-    def nopu_calibration(self, f, nq=6, plot=True):
+    def nopu_calibration(self, nq=6, plot=True):
         """
         Performs the L0 (uniform eta response) and L1 (absolute scale) calibrations.
         When dealing with pile-up, 'pu_calibration()' has to be called afterwords.
@@ -88,7 +88,7 @@ class Calibration(PartialWafersStudies, object):
         from ROOT import TFile, TH2F
         from UserCode.HGCalMaskVisualProd.SystemUtils import EtaStr as ES
 
-        fIn = TFile.Open(f)
+        fIn = TFile.Open(self.flags.noPUFile)
         data = fIn.Get('data')
 
         for ireg in [1,2,3]:
@@ -97,7 +97,6 @@ class Calibration(PartialWafersStudies, object):
                 idx = np.where(self.etas_l==ieta1)[0][0]
                 idstr = 'sr{}_from{}to{}'.format(ireg, ES(ieta1), ES(ieta2))
                 xq = np.percentile(x[idx], [i*100./nq for i in range(0,nq+1)], axis=0)
-            
                 #relative calibration versus eta
                 hn = idstr+'_'+self.samples+'_mask'+self.mask
                 htmp = TH2F('resVSeta_'+hn, 
@@ -130,7 +129,7 @@ class Calibration(PartialWafersStudies, object):
 
     
 
-    def pu_calibration(self, f, nq=10, plot=True):
+    def pu_calibration(self, nq=10, plot=True):
         """
         To be used in pile-up situations only.
         It parametrizes the absolute shift in energy as function of the 
@@ -141,7 +140,7 @@ class Calibration(PartialWafersStudies, object):
         from ROOT import TFile, TH2F
         from UserCode.HGCalMaskVisualProd.SystemUtils import EtaStr as ES
 
-        fIn=TFile.Open(f)
+        fIn=TFile.Open(self.flags.PUFile)
         data=fIn.Get('data')
 
         for ireg in [1,2,3]:

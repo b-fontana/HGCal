@@ -17,7 +17,7 @@ class _RootObjects:
         self.N = len(self.o)
         
     def save(self, fname, mode='RECREATE'):
-        f = TFile.Open(fname+'.root', mode)
+        f = TFile.Open(fname, mode)
         for io in range(len(self.o)):
             self.o[io].Write()
         f.Write()

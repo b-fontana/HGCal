@@ -154,8 +154,7 @@ def plotHistograms(histos, cdims, pcoords, cname):
         plot.save(cpos=0, name=cname)
 
     if not FLAGS.apply_weights:
-        save_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                     FLAGS.samples+'_mode'+str(FLAGS.mode)+'_'+FLAGS.method )
+        save_str = base.paths.weights
         RootHistograms(histos).save(save_str)
         RootHistograms(hdiv).save(save_str, mode='UPDATE')
 
@@ -166,21 +165,18 @@ def main():
 
     fIn=TFile.Open(FLAGS.noPUFile)
     data=fIn.Get('data')
-    calib_str = 'calib_'+FLAGS.samples+"_"+str(FLAGS.mask)+"_"+FLAGS.method+'_nopu.pck'
-    """
-    calibration = Calibration(FLAGS.mingenen, etaregions,
-                              FLAGS.plotLabel, FLAGS.samples, FLAGS.mask, FLAGS.outpath)
-    calibration.L0L1Calibration(FLAGS.noPUFile)
+    calib_str = base.paths.calibrations_nopu
+    calibration = Calibration(FLAGS)
+    calibration.nopu_calibration()
     calibration.save(calib_str)
-    """
+
     with open(calib_str, 'r') as cachefile:
         calib = pickle.load(cachefile)
 
     if FLAGS.apply_weights:
-        calibshowers_str = ( 'calibshowers_mask'+str(FLAGS.mask)+'_'+
-                             FLAGS.samples+'_mode2_'+FLAGS.method)
+        calibshowers_str = base.paths.weights
         bckgcuts_extended = np.append(bckgcuts, 0.9)
-        showercorr = IncompleteShowersCorrection(calibshowers_str+'.root',
+        showercorr = IncompleteShowersCorrection(calibshowers_str,
                                                  discrvals=Av(bckgcuts_extended))
         weights = showercorr.CorrectionWeights()
         if FLAGS.samples == 'inner':
@@ -481,7 +477,7 @@ def main():
                        'indepVSeta1','indepVSeta2','indepVSeta3']
             indices = [1, 2, 3] * 3
             indices.sort()
-            fstr = 'allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'_'+FLAGS.method+'.root'
+            fstr = base.paths.plots
             fOut = TFile(fstr, 'RECREATE')
             fOut.cd()
             for ih,h in enumerate(ht_tmp):
@@ -495,7 +491,7 @@ def main():
 
     elif FLAGS.mode == 2:
         if FLAGS.apply_weights:
-            fstr = 'allplots_'+FLAGS.samples+'_'+str(FLAGS.mask)+'_'+FLAGS.method+'.root'
+            fstr = base.paths.plot
             fOut = TFile(fstr, 'RECREATE')
             fOut.cd()
             for ireg in range(NREG):
@@ -588,17 +584,8 @@ if __name__ == "__main__":
     parser.print_args()
     if FLAGS.apply_weights and FLAGS.mode != 2:
         raise ValueError('The weights can only be used when mode==2.')
-    base = PartialWafersStudies()
+    base = PartialWafersStudies(FLAGS)
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
-    if FLAGS.method == 'fineeta':
-        if FLAGS.samples == 'inner':
-            etaregions = np.linspace(2.7, 3.03, 331)
-        elif FLAGS.samples == 'outer':
-            etaregions = np.linspace(1.45, 1.65, 201)
-    elif FLAGS.method == 'ed':
-        if FLAGS.samples == 'inner':
-            etaregions = np.array((2.7, 2.94))
-        elif FLAGS.samples == 'outer':
-            etaregions = np.array((1.55, 1.65))
+    etaregions = base.etaregions
     bckgcuts = np.array(FLAGS.bckgcuts)
     main()
