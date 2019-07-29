@@ -22,36 +22,34 @@ void Calibration::nopu_calibration(const int& nq, const bool& plot)
     vec3d x = Calibration::energies_for_calibration("data", ireg);
     typename std::vector<float>::iterator it;
     for(it=etareg.begin(); etareg.end()-it>1; ++it) {
+      std::cout << "ETAREGIONS ITERATOR: " << *it << " " << *(it+1) << std::endl;
       int idx = std::distance(etareg.begin(), it);
+      std::cout << "DISTANCE: " << idx << std::endl;
 
-      std::ostringstream oss;
-      oss << "sr" << ireg << "from" << *it << "to" << *(it+1);
-      std::string idstr = oss.str();
+      std::string str1 = std::to_string(*it).replace(1,1,"p").erase(5,10);
+      std::string str2 = std::to_string(*(it+1)).replace(1,1,"p").erase(5,10);
+      std::string idstr = "sr" + std::to_string(ireg) + "from" + str1 + "to" + str2;
+      std::cout << "STRING: " << idstr << std::endl;
 
       unsigned int ss = x[idx].size();
+      std::cout << "SIZE: " << ss << std::endl;
       double xq0[ss], xq1[ss];
-      double quantiles[nq+1];
+      double probs[nq+1];
       for(int j=0; j<nq+1; ++j) {
-	quantiles[j] = j*100/nq;
+	probs[j] = static_cast<double>(j)/nq;
       }
       for(int j=0; j<ss; ++j) {
-	xq0[ss] = x[idx][j][0];
-	xq1[ss] = x[idx][j][1];
+	xq0[j] = static_cast<double>(x[idx][j][0]);
+	xq1[j] = static_cast<double>(x[idx][j][1]);
       }
-      double probs0[nq+1], probs1[nq+1]; 
-      TMath::Quantiles(ss, nq+1, xq0, quantiles, probs0, kFALSE);
-      TMath::Quantiles(ss, nq+1, xq1, quantiles, probs1, kFALSE);
-
-      for(int i=0; i<nq+1; ++i) {
-	std::cout << quantiles[i] << std::endl;
-	std::cout << probs0[i] << " - " << probs1[i] << std::endl;
-      }
-      std::exit(0);
+      double quantiles0[nq+1], quantiles1[nq+1]; 
+      TMath::Quantiles(ss, nq+1, xq0, quantiles0, probs, kFALSE);
+      TMath::Quantiles(ss, nq+1, xq1, quantiles1, probs, kFALSE);
 
       //relative calibration versus eta
       std::string hn = idstr + "_" + this->samples + "_mask" + std::to_string(this->mask);
       TH2D* htmp = new TH2D(("resVSeta_"+hn).c_str(),  
-			    ";|#eta|;#DeltaE/E", nq, probs1, 100, -1, 1);
+			    ";|#eta|;#DeltaE/E", nq, quantiles1, 100, -1, 1);
       float genen, geneta, recen, deltaE;
       for(int i=0; i<ss; ++i) {
 	genen = x[idx][i][0];
@@ -69,7 +67,7 @@ void Calibration::nopu_calibration(const int& nq, const bool& plot)
 
       //relative calibration versus energy
       htmp = new TH2D(("resVSen_"+hn).c_str(), ";Reconstructed energy [GeV];#DeltaE/E", 
-		      nq, probs0, 100, -1, 1);
+		      nq, quantiles0, 100, -1, 1);
       for(int i=0; i<ss; ++i) {
 	genen = x[idx][i][0];
 	geneta = x[idx][i][1];
