@@ -20,7 +20,10 @@ TGraphAsymmErrors* build_median_profile(TH2D* h) {
     int npts = medianGr->GetN();
     medianGr->SetPoint(npts, xcen, yq[1]);
     medianGr->SetPointError(npts, 0, 0, yq[1]-yq[0], yq[2]-yq[1]);
-    tmp->Delete();
   }
   return medianGr;
+}
+
+std::string etastr(std::string s) {
+  return s.replace(1,1,"p").erase(5,10);
 }
