@@ -17,36 +17,33 @@
 #include "ROOT/RDataFrame.hxx"
 
 #include "../interface/utils.h"
-
-typedef std::vector< std::vector<float> > vec2d;
-typedef std::vector< std::vector< std::vector<float> > > vec3d;
-typedef std::map<std::string, TGraph> cmap; //calibration storage map
+#include "../interface/types.h"
 
 class Calibration 
 {
  private:
-  float mingenen;
-  std::vector<float> etareg;
-  std::vector<float> etareg_shift;
-  std::string label;
-  std::string samples;
-  unsigned int mask;
-  std::string noPUFile;
-  std::string outpath;
-  int nreg;
+  const float mingenen;
+  vec1d<float> etareg;
+  vec1d<float> etareg_shift;
+  const std::string label;
+  const std::string samples;
+  const unsigned int mask;
+  const std::string noPUFile;
+  const std::string outpath;
+  const int nreg;
 
   TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, 
 			  const std::string&, const bool&);
-  vec3d energies_for_calibration(const std::string&, const int&);  
+  vec3d<float> energies_for_calibration(const std::string&, const int&);  
   //void fill_layer_energies(const float&, const float&, const float&, const float&);
   void stop() {std::exit(0);}
  
  public: 
-  std::vector<cmap> calib; 
+  vec1d<mapfunc> calib; 
 
-  Calibration(float, std::vector<float>, int, 
-	      std::string, std::string, unsigned int, 
-	      std::string, std::string);
+  Calibration(const float, const std::vector<float>, const int,
+	      const std::string, const std::string, const unsigned int,
+	      const std::string, const std::string);
 
   void pu_calibration(const int&, const bool&);
   void nopu_calibration(const int&, const bool&);
