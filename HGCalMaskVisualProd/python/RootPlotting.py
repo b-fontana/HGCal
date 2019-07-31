@@ -189,9 +189,9 @@ class RootPlotting:
         return tex
 
     def setHistogram(self, cpos, ppos, h, 
-                      title='', xaxis_title='', yaxis_title='', 
+                     title='', xaxis_title='', yaxis_title='', 
                      xranges=(None,None), yranges=(None,None),
-                      lc=1, lw=3, mc=1, msize=1, mstyle=8):
+                     lc=1, lw=3, mc=1, msize=1, mstyle=8):
         self._c[cpos].cd()
         self._p[cpos][ppos].cd()       
         h.SetTitle(title)
@@ -228,29 +228,6 @@ class RootPlotting:
         else:
             h.Draw(draw_options)
 
-    def plotGraph(self, cpos, ppos, g, 
-                  title='', xaxis_title='', yaxis_title='',
-                  lc=1, lw=3, mc=1, msize=1, mstyle=8,
-                  draw_options='', copy=False):
-        self._c[cpos].cd()
-        self._p[cpos][ppos].cd()       
-        g.SetTitle(title)
-        if xaxis_title != '':
-            g.GetXaxis().SetTitle(xaxis_title)
-        if yaxis_title != '':
-            g.GetYaxis().SetTitle(yaxis_title)
-        g.GetXaxis().SetTitleOffset(1.2)
-        g.GetYaxis().SetTitleOffset(1.2)
-        g.SetLineColor(lc)
-        g.SetMarkerColor(mc)
-        g.SetMarkerSize(msize)
-        g.SetMarkerStyle(mstyle)
-        g.SetLineWidth(lw)
-        if copy:
-            g.DrawCopy(draw_options)
-        else:
-            g.Draw(draw_options)
-
     def fitHistogram(self, h, f=None, fname='crystalball', frange=(-5.,5.), tex=None):
         """
         Fits TF1 'f' to histogram 'h'. 
@@ -261,13 +238,12 @@ class RootPlotting:
         if f == None:
             f = TF1("f", fname, frange[0], frange[1])
             if fname == 'crystalball':
-                f.SetParameters(1., 0., .3, 1., 5.)
+                f.SetParameters(1000., 0., .2, 2., 1.)
                 f.SetParLimits(0, 1., 10000)
                 f.SetParLimits(1, -.3, .3)
                 f.SetParLimits(2, 0.00001, 1.)
                 f.SetParLimits(3, 0.00001, 5.)
                 f.SetParLimits(4, 0.00001, 5.)
-                #f.FixParameter(4, 3.)
             elif fname == 'gaus':
                 f.SetParameters(1., 0., 1.)
             else:
@@ -278,6 +254,40 @@ class RootPlotting:
                           .format(round(f.GetParameter(1),4), round(f.GetParError(1),4)))
             tex.DrawLatex(0.15,0.8, '#sigma={}#pm{}'
                           .format(round(f.GetParameter(2),4), round(f.GetParError(2),4)))
+
+    def setGraph(self, cpos, ppos, g,
+                 title='', name='', xaxis_title='', yaxis_title='',
+                 xranges=(None,None), yranges=(None,None),
+                 lc=1, lw=3, mc=1, msize=1, mstyle=8,
+                 draw_options='', copy=False):
+        self._c[cpos].cd()
+        self._p[cpos][ppos].cd()       
+        g.SetTitle(title)
+        g.SetName(name)
+        if xaxis_title != '':
+            g.GetXaxis().SetTitle(xaxis_title)
+        if yaxis_title != '':
+            g.GetYaxis().SetTitle(yaxis_title)
+        if xranges != (None,None):
+            g.GetXaxis().SetRangeUser(xranges[0],xranges[1]);
+        if yranges != (None,None):
+            g.GetYaxis().SetRangeUser(yranges[0],yranges[1]);
+        g.GetXaxis().SetTitleOffset(1.2)
+        g.GetYaxis().SetTitleOffset(1.2)
+        g.SetLineColor(lc)
+        g.SetMarkerColor(mc)
+        g.SetMarkerSize(msize)
+        g.SetMarkerStyle(mstyle)
+        g.SetLineWidth(lw)
+
+    def plotGraph(self, cpos, ppos, g,
+                  draw_options='AP', copy=False, gset=True, **kwargs): 
+        if gset:
+            self.setGraph(cpos, ppos, g, **kwargs)
+        if copy:
+            g.DrawCopy(draw_options)
+        else:
+            g.Draw(draw_options)
 
     def save(self, cpos, name):
         self._c[cpos].SaveAs(name)

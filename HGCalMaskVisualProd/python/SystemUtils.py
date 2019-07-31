@@ -1,7 +1,6 @@
 import os
 import numpy as np
 
-
 def createDir(name):
     if not os.path.isdir(name):
         os.mkdir(name)

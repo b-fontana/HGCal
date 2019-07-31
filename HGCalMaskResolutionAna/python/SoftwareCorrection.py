@@ -6,6 +6,27 @@ from ROOT import Double
 from UserCode.HGCalMaskVisualProd.RootUtils import PyDoubleBufferToList as toList
 from UserCode.HGCalMaskResolutionAna.PartialWafersStudies import PartialWafersStudies
 
+def DifferentiateShowersByEnergy(current, standard, thresholds, min_val):
+        """
+        Returns:
+        -> 0: the shower is complete.
+        -> 1,2,...: each background category.
+        """
+        assert len(current) == len(standard)
+        cumdiff = 0.
+        for i in range(len(current)):
+            if standard[i] < min_val:
+                continue
+            cumdiff += abs(standard[i] - current[i])
+        if cumdiff < thresholds[0]:
+            return 0
+        th_shift = np.roll(thresholds, shift=-1)[:-1]
+        for it1,it2 in zip(thresholds[:-1],th_shift):
+            if cumdiff >= it1 and cumdiff < it2:
+                return np.where(th_shift == it2)[0][0] + 1
+        if cumdiff >= thresholds[-1]:
+            return np.where(th_shift == it2)[0][0] + 2
+
 class IncompleteShowersCorrection(PartialWafersStudies, object):
     """
     Provides all methods required to correct incomplete showers.
@@ -122,24 +143,3 @@ class IncompleteShowersCorrection(PartialWafersStudies, object):
             f.append( h.Integral(limita, limitb) / h.Integral() )
             h.Delete()
         return f
-    
-    def DifferentiateShowersByEnergy(self, current, standard, thresholds, min_val):
-        """
-        Returns:
-        -> 0: the shower is complete.
-        -> 1,2,...: each background category.
-        """
-        assert len(current) == len(standard)
-        cumdiff = 0.
-        for i in range(len(current)):
-            if standard[i] < min_val:
-                continue
-            cumdiff += abs(standard[i] - current[i])
-        if cumdiff < thresholds[0]:
-            return 0
-        th_shift = np.roll(thresholds, shift=-1)[:-1]
-        for it1,it2 in zip(thresholds[:-1],th_shift):
-            if cumdiff >= it1 and cumdiff < it2:
-                return np.where(th_shift == it2)[0][0] + 1
-        if cumdiff >= thresholds[-1]:
-            return np.where(th_shift == it2)[0][0] + 2
