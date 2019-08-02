@@ -4,10 +4,11 @@
 #include <iostream>
 #include <string>
 #include <map>
-
 #include "TH1.h"
 #include "TH2.h"
 #include "TGraphAsymmErrors.h"
+
+#include "../interface/types.h"
 
 template <typename T>
 class VecOps {
@@ -44,8 +45,8 @@ class VecOps {
   }
 }; 
   
-template<typename V, typename K>
-  void check_key(const std::map<K,V>& m, const K& k) {
+template<typename V>
+void check_key(const std::string& k, const mapstr<V>& m) {
   if (m.find(k) == m.end()) {
     std::cout << "Inserted key: " << k << std::endl;
     throw std::invalid_argument("The key does not exist.");

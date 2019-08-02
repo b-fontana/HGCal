@@ -39,7 +39,7 @@ class Calibration
   void stop() {std::exit(0);}
  
  public: 
-  vec1d<mapfunc> calib; 
+  vec1d<mapstr<TF1*>> calib; 
 
   Calibration(const float, const std::vector<float>, const int,
 	      const std::string, const std::string, const unsigned int,

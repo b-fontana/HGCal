@@ -8,7 +8,7 @@ Calibration::Calibration(const float mingenen_, std::vector<float> etareg_,
   samples(samples_), mask(mask_), noPUFile(noPUFile_), outpath(outpath_) {
   etareg_shift = VecOps(etareg).shift();
   for(int i=0; i<nreg; ++i) {
-    mapfunc tmpmap;
+    mapstr<TF1*> tmpmap;
     calib.push_back(tmpmap);
   }
 }
