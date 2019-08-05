@@ -11,23 +11,82 @@
 #include "interface/utils.h"
 #include "interface/calibration.h"
 #include "interface/software_correction.h"
+#include "interface/parser.h"
 
-int_ main() {
-  unsigned int ncores = std::thread::hardware_concurrency();
+int_ main(int argc, char** argv) {
+  if(argc!=5) 
+    {
+      std::cout << "Please specify both the samples and the mask to be used." << std::endl;
+      std::exit(0);
+    }
+  if(argv[1] != std::string("--samples"))
+    {
+      std::cout << "The first argument must specify the samples to be used." << std::endl;
+      std::exit(0);
+    }
+  else if(argv[3] != std::string("--mask"))
+    {
+      std::cout << "The second argument must specify the mask to be used." << std::endl;
+      std::exit(0);
+    }
 
   //variables
-  float_ mingenen = 20.;
-  vec1d<float_> etareg = {2.7, 2.94};
-  vec1d<float_> etareg_shift = VecOps(etareg).shift();
+  std::string samples = argv[2];
+  uint_ mask = std::stoi(argv[4]);
+  unsigned int ncores = std::thread::hardware_concurrency();
+
+  float_ mingenen;
+  vec1d<float_> etareg;
+  int_ nreg;
+  int_ nlayers;
+  std::string label;
+  std::string noPUFile;
+  std::string outpath;
+  vec1d<float_> bckgcuts;
+
+  std::ifstream infile("params.csv");
+  for(CSVIterator it(infile); it != CSVIterator(); ++it)
+    {
+      CSVRow row = *it;
+      if(row[0]=="mingenen") 
+	{
+	  if( row.size()!=2 ) {row.bad_row();}
+	  mingenen = std::stof(row[1]);
+	}
+      else if(row[0]=="etareg")
+	{
+	  if( row.size()!=3 ) {row.bad_row();}
+	  etareg = {std::stof(row[1]), std::stof(row[2])};
+	}
+      else if(row[0]=="nreg") 
+	{
+	  if( row.size()!=2 ) {row.bad_row();}
+	  nreg = std::stoi(row[1]);
+	}
+      else if(row[0]=="nlayers") 
+	{
+	  if( row.size()!=2 ) {row.bad_row();}
+	  nlayers = std::stoi(row[1]);
+	}
+      else if(row[0]=="input") 
+	{
+	  if( row.size()!=2 ) {row.bad_row();}
+	  noPUFile = row[1];
+	}
+      else if(row[0]=="output") 
+	{
+	  if( row.size()!=2 ) {row.bad_row();}
+	  outpath = row[1];
+	}
+      else if(row[0]=="bckgcuts") 
+	{
+	  if( row.size()!=4 ) {row.bad_row();}
+	  bckgcuts = {std:stof(row[1]),std:stof(row[2]),std:stof(row[3])};
+	}
+    }
+
   uint_ n = etareg.size();
-  const int_ nreg = 3;
-  const int_ nlayers = 28;
-  std::string label = "";
-  std::string samples = "inner";
-  uint_ mask = 3;
-  std::string noPUFile = "../summaries/summary_mask3_inner.root";
-  std::string outpath = "../pics_inner/mask3";
-  vec1d<float_> bckgcuts = {0.5, 0.6, 0.7};
+  vec1d<float_> etareg_shift = VecOps(etareg).shift();
 
   std::string def1 = 
     "std::vector<float> en = {en_sr1_ROI, en_sr2_ROI, en_sr3_ROI};"
