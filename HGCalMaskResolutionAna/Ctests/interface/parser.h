@@ -20,6 +20,7 @@ class CSVRow
       return m_data.size();
     }
   void read_next_row(std::istream&);
+  void bad_row();
 
  private:
   std::vector<std::string> m_data;
@@ -36,8 +37,8 @@ class CSVIterator
   typedef CSVRow*                     pointer;
   typedef CSVRow&                     reference;
 
- CSVIterator(std::istream& str)  :m_str(str.good()?&str:NULL) { ++(*this); }
- CSVIterator()                   :m_str(NULL) {}
+ CSVIterator(std::istream& str)  :m_str(str.good()?&str:nullptr) { ++(*this); }
+ CSVIterator()                   :m_str(nullptr) {}
 
   // Pre Increment
   CSVIterator& operator++();

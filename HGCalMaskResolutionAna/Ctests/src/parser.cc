@@ -21,6 +21,14 @@ void CSVRow::read_next_row(std::istream& str)
     }
 }
 
+void CSVRow::bad_row()
+{
+  std::cout << "Row contents: " << std::endl;
+  for(int i=0; i<this->size(); ++i)
+    std::cout << (*this)[i] << "  ";
+  throw std::length_error("The parsed row has the wrong number of elements.");
+}
+
 std::istream& operator>>(std::istream& str, CSVRow& data)
 {
   data.read_next_row(str);
