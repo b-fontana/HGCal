@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstddef>
 
+using char_ = char;
 using bool_ = bool;
 using float_ = float;
 using int_ = int;

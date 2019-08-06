@@ -8,10 +8,10 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TProfile.h"
 
-#include "interface/utils.h"
-#include "interface/calibration.h"
-#include "interface/software_correction.h"
-#include "interface/parser.h"
+#include "UserCode/CCode/interface/utils.h"
+#include "UserCode/CCode/interface/calibration.h"
+#include "UserCode/CCode/interface/software_correction.h"
+#include "UserCode/CCode/interface/parser.h"
 
 int_ main(int argc, char** argv) {
   if(argc!=5) 
@@ -33,32 +33,18 @@ int_ main(int argc, char** argv) {
   //variables
   std::string samples = argv[2];
   uint_ mask = std::stoi(argv[4]);
-  unsigned int ncores = std::thread::hardware_concurrency();
+  uint_ ncores = std::thread::hardware_concurrency();
 
-  float_ mingenen;
-  vec1d<float_> etareg;
   int_ nreg;
   int_ nlayers;
   std::string label;
   std::string noPUFile;
-  std::string outpath;
-  vec1d<float_> bckgcuts;
 
   std::ifstream infile("params.csv");
   for(CSVIterator it(infile); it != CSVIterator(); ++it)
     {
       CSVRow row = *it;
-      if(row[0]=="mingenen") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  mingenen = std::stof(row[1]);
-	}
-      else if(row[0]=="etareg")
-	{
-	  if( row.size()!=3 ) {row.bad_row();}
-	  etareg = {std::stof(row[1]), std::stof(row[2])};
-	}
-      else if(row[0]=="nreg") 
+      if(row[0]=="nreg") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
 	  nreg = std::stoi(row[1]);
@@ -73,20 +59,7 @@ int_ main(int argc, char** argv) {
 	  if( row.size()!=2 ) {row.bad_row();}
 	  noPUFile = row[1]+"mask"+std::string(argv[4])+"_"+std::string(argv[2])+".root";
 	}
-      else if(row[0]=="output") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  outpath = row[1]+std::string(argv[2])+"/mask"+std::string(argv[4]);
-	}
-      else if(row[0]=="bckgcuts") 
-	{
-	  if( row.size()!=4 ) {row.bad_row();}
-	  bckgcuts = {std:stof(row[1]),std:stof(row[2]),std:stof(row[3])};
-	}
     }
-
-  uint_ n = etareg.size();
-  vec1d<float_> etareg_shift = VecOps(etareg).shift();
 
   std::string def1 = 
     "std::vector<float> en = {en_sr1_ROI, en_sr2_ROI, en_sr3_ROI};"
@@ -122,9 +95,11 @@ int_ main(int argc, char** argv) {
   TTree *tree = new TTree("data", "Tree after weights");
   float_ geneta;
   vec1d<float_> deltaE(nreg), deltaE_corr(nreg);
+  vec1d<float_> shower_number(nreg);
   tree->Branch("geneta", &geneta);
   tree->Branch("deltaE", &deltaE);
   tree->Branch("deltaE_corr", &deltaE_corr);
+  tree->Branch("shower_number", &shower_number);
 
   auto apply_weights = [&](float_ gen, float_ geta, 
 			   vec1d<float_> en, vec1d<float_> noi,
@@ -166,13 +141,14 @@ int_ main(int argc, char** argv) {
 	  }
 	}
       }
-      deltaE[ireg] = en[ireg]/gen - 1.;
+      deltaE.at(ireg) = en[ireg]/gen - 1.;
       if(showerid[ireg]!=0) {
 	encorr *= ( 1 / (1-lowfact[ireg]) );
 	//if(samples=="inner") encorr *= 1/0.09;
 	//else if(samples=="outer") encorr *= 1/0.08;
       }
-      deltaE_corr[ireg] = encorr/gen - 1.;
+      deltaE_corr.at(ireg) = encorr/gen - 1.;
+      shower_number.at(ireg) = showerid.at(ireg);
     }
     geneta = geta;
     tree->Fill();

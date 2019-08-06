@@ -8,12 +8,12 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TProfile.h"
 
-#include "interface/utils.h"
-#include "interface/calibration.h"
-#include "interface/software_correction.h"
-#include "interface/parser.h"
+#include "UserCode/CCode/interface/utils.h"
+#include "UserCode/CCode/interface/calibration.h"
+#include "UserCode/CCode/interface/software_correction.h"
+#include "UserCode/CCode/interface/parser.h"
 
-int_ main(int argc, char **argv) {
+int_ main(int_ argc, char_ **argv) {
   if(argc!=5) 
     {
       std::cout << "Please specify both the samples and the mask to be used." << std::endl;
@@ -33,7 +33,7 @@ int_ main(int argc, char **argv) {
   //variables
   std::string samples = argv[2];
   uint_ mask = std::stoi(argv[4]);
-  unsigned int ncores = std::thread::hardware_concurrency();
+  uint_ ncores = std::thread::hardware_concurrency();
 
   float_ mingenen;
   vec1d<float_> etareg;
@@ -124,7 +124,6 @@ int_ main(int argc, char **argv) {
       float_ encalib = 0.;
       typename vec1d<float_>::const_iterator it;
       for(it = etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
-	int_ idx = it-etareg.cbegin();
 	std::string idstr;
 	//in case it lies outside the limits of the calibration
 	//the event is calibrated with the full calibration region
@@ -157,7 +156,7 @@ int_ main(int argc, char **argv) {
       assert(f1.at(ireg-1)!=1.);
       for(int_ il=1; il<=nlayers; ++il) {
 	float_ v = f1.at(ireg-1)*en_layer[ireg-1][il-1] - f2.at(ireg-1);
-	if( (samples=="inner" && geta<etareg[0]+0.05 || samples=="outer" and geta>1.6)
+	if( ((samples=="inner" && geta<etareg[0]+0.05) || (samples=="outer" && geta>1.6))
 	    && encalib != 0. ) {
 	  frac_en[ireg-1][il-1] += (v/encalib);
 	  countfrac_en[ireg-1][il-1] += 1;
@@ -181,7 +180,7 @@ int_ main(int argc, char **argv) {
     hist.insert({{s, p}});
   }
   for(int_ ireg=0; ireg<nreg; ++ireg) {
-    for(int_ iw=0; iw<bckgcuts.size(); ++iw) {
+    for(uint_ iw=0; iw<bckgcuts.size(); ++iw) {
       std::string s = "en"+std::to_string(ireg+1)+"_layers_bckg"+std::to_string(iw+1);
       TProfile* p = new TProfile(s.c_str(), ";Layer;E_{reco}/E_{gen}", 
 				 nlayers, bins);
@@ -219,7 +218,7 @@ int_ main(int argc, char **argv) {
     "std::vector< std::vector<float> > en_layer = {en_layer1, en_layer2, en_layer3};"
     "return en_layer;";
 
-  //ROOT::EnableImplicitMT(ncores);
+  ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame d1("data", noPUFile.c_str());
   d1.Define("abs_geneta", "abs(geneta)")
     .Define("en", def1)
@@ -255,7 +254,6 @@ int_ main(int argc, char **argv) {
       float encalib = 0.;
       typename vec1d<float_>::const_iterator it;
       for(it = etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
-	int_ idx = it-etareg.cbegin();
 	std::string idstr;
 	//in case it lies outside the limits of the calibration
 	//the event is calibrated with the full calibration region
@@ -273,7 +271,6 @@ int_ main(int argc, char **argv) {
 	encalib = f1.at(ireg-1)*en[ireg-1] - f2.at(ireg-1);
       }
 
-      float_ deltaE = encalib/gen-1.;
       vec1d<float_> ROI_en(nlayers, 0.); 
       for(int_ il=0; il<nlayers; ++il) {
 	float_ v = f1.at(ireg-1)*en_layer[ireg-1][il] - f2.at(ireg-1);
@@ -292,7 +289,6 @@ int_ main(int argc, char **argv) {
       showerid.at(ireg-1) = diff_ed(ROI_en, frac_en[ireg-1], bckgcuts, 0.05);
 
       //calculate and calibrate the energy per layer
-      float_ en_corr = 0;
       for(int_ il=1; il<=nlayers; ++il) {
 	std::string sreg = std::to_string(ireg);
 	float_ bin = hist["en"+sreg+"_layers_signal"]->FindBin(il);
@@ -334,10 +330,10 @@ int_ main(int argc, char **argv) {
   std::string fwname = "fileweights"+std::to_string(mask)+std::string(samples)+".root";
   TFile *fileweights = new TFile(fwname.c_str(),"RECREATE");
   fileweights->cd();
-  for(int ireg=1; ireg<=nreg; ++ireg) {
+  for(int_ ireg=1; ireg<=nreg; ++ireg) {
     std::string str_s = "en"+std::to_string(ireg)+"_layers_signal";
     hist[str_s]->Clone(("en"+std::to_string(ireg)+"_layer_sign").c_str())->Write();
-    for(int iw=1; iw<=bckgcuts.size(); ++iw) {
+    for(uint_ iw=1; iw<=bckgcuts.size(); ++iw) {
       std::string str_b = "en"+std::to_string(ireg)+"_layers_bckg"+std::to_string(iw);
       std::string sclone = "weight"+std::to_string(iw)+"_sr"+std::to_string(ireg);
       TH1F* h_b = static_cast<TH1F*>(hist[str_b]->Clone( sclone.c_str() ));
@@ -348,6 +344,6 @@ int_ main(int argc, char **argv) {
   }
   fileweights->Close();
   delete fileweights;
-  for(auto const& [k,v]: hist) delete v;
+  for(auto const& v: hist) delete v.second;
   return 0;
 }

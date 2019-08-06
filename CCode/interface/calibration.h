@@ -25,12 +25,12 @@ class Calibration
   const float mingenen;
   vec1d<float> etareg;
   vec1d<float> etareg_shift;
+  const int nreg;
   const std::string label;
   const std::string samples;
   const unsigned int mask;
   const std::string noPUFile;
   const std::string outpath;
-  const int nreg;
 
   TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, 
 			  const std::string&, const bool&);

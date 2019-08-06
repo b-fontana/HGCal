@@ -8,6 +8,8 @@
 #include <vector>
 #include <string>
 
+#include "../interface/types.h"
+
 class CSVRow
 {
  public:
