@@ -45,8 +45,8 @@ for iax1 in range(height):
         h = ax[iax1,iax2].hist(x=deltaE[iax2 + width*iax1],
                                bins=(100), range=(-1.2,1.))
 plt.xlabel('$\Delta E / E_{gen}$')
-plt.savefig('resolution.png')
-
+plt.savefig('figs/resolution.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/resolution.png')
 
 
 
