@@ -1,5 +1,5 @@
 <use name="root"/>
-<use name="UserCode/CCode"/>
+<use name="UserCode/AnalysisCode"/>
 <environment>
   <bin name="analysis_ed" file="analysis_ed.cc"/>
   <bin name="analysis_ed_weights" file="analysis_ed_weights.cc"/>
