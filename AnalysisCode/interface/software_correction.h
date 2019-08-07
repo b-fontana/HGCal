@@ -10,7 +10,7 @@
 #include "../interface/utils.h"
 #include "../interface/types.h"
 
-int_ diff_ed(vec1d<float_>, vec1d<float_>, vec1d<float_>, float_);
+int_ diff_ed(const vec1d<float_>&, const vec1d<float_>&, const vec1d<float_>&, const float_&);
 
 class SoftwareCorrection {
  private:

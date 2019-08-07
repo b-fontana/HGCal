@@ -32,7 +32,7 @@ class vector3d {
   T const& operator()(std::size_t i, std::size_t j, std::size_t k) const {
     return data[i*d2*d3 + j*d3 + k];
   }
-  
+
  private:
   std::size_t d1, d2, d3;
   vec1d<T> data;

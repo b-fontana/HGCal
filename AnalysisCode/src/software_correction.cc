@@ -2,8 +2,8 @@
 
 //classify showers as complete or incomplete according to their energy per layer distributions
 //0: complete; 1, 2, ...: each background category
-int_ diff_ed(vec1d<float_> curr, vec1d<float_> standard, 
-	     vec1d<float_> thresholds, float_ minval) {
+int_ diff_ed(const vec1d<float_>& curr, const vec1d<float_>& standard, 
+	     const vec1d<float_>& thresholds, const float_& minval) {
   assert(curr.size()==standard.size());
   float_ cumdiff = 0.;
   typename vec1d<float_>::const_iterator it1;
@@ -24,6 +24,8 @@ int_ diff_ed(vec1d<float_> curr, vec1d<float_> standard,
   uint_ n = thresholds.size();
   if(cumdiff>=thresholds[n-1])
     return n;
+  //it should never reach this point
+  return -1;
 }
 
 SoftwareCorrection::SoftwareCorrection(std::string fname) {
@@ -31,13 +33,10 @@ SoftwareCorrection::SoftwareCorrection(std::string fname) {
 	{"weight1_sr2", "weight2_sr2", "weight3_sr2"},
 	{"weight1_sr3", "weight2_sr3", "weight3_sr3"}};
   hn_sig = {"en1_layer_sign", "en2_layer_sign", "en3_layer_sign"};
-  hn_bckg = {{"en1_layer_bckg1", "en1_layer_bckg2", "en1_layer_bckg3"},
-	     {"en2_layer_bckg1", "en2_layer_bckg2", "en2_layer_bckg3"},
-	     {"en3_layer_bckg1", "en3_layer_bckg2", "en3_layer_bckg3"}};
   fw = new TFile(fname.c_str(), "READ");
   TH1F* h;
   for(int_ ireg=0; ireg<nreg; ++ireg) {
-    for(int_ iw=0; iw<discrvals.size(); ++iw) {
+    for(uint_ iw=0; iw<discrvals.size(); ++iw) {
       h = static_cast<TH1F*>(fw->Get(wn[ireg][iw].c_str()));
       for(int_ il=1; il<=nlayers; ++il) {
 	int_ b = h->FindBin(il);
@@ -56,7 +55,7 @@ vec1d<TGraph*> SoftwareCorrection::build_weights_graphs(int_ region) {
   vec1d<TGraph*> g;
   for(int_ il=0; il<nlayers; ++il) {
     g[il] = new TGraph(discrvals.size());
-    for(int_ iw=0; iw<discrvals.size(); ++iw) {
+    for(uint_ iw=0; iw<discrvals.size(); ++iw) {
       float_ x = discrvals[iw];
       float_ y = this->weights(region-1,iw,il);
       g[il]->SetPoint(iw, x, y);
@@ -75,8 +74,8 @@ vec1d<float_> SoftwareCorrection::low_stats_factor(vec1d<int_> limits, std::stri
       std::cout << "The integral is zero." << std::endl;
       std::exit(0);
     }
-    uint_ limita;
-    uint_ limitb;
+    uint_ limita = 0;
+    uint_ limitb = 0;
     if(mode=="left") {
       limita = h->FindBin(1);
       limitb = h->FindBin(limits[ireg]);
@@ -84,6 +83,10 @@ vec1d<float_> SoftwareCorrection::low_stats_factor(vec1d<int_> limits, std::stri
     else if(mode == "right") {
       limita = h->FindBin(limits[ireg]);
       limitb = h->FindBin(h->GetNbinsX());
+    }
+    else {
+      std::cout << "The mode introduced is not valid." << std::endl;
+      std::exit(0);
     }
     f[ireg] = h->Integral(limita,limitb)/h->Integral();
   }
