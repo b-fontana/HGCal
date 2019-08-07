@@ -6,7 +6,9 @@ from matplotlib import rcParams as rc
 from uproot import open as upopen
 import numpy as np
 
-file = upopen("../root_files/file_after_weights_3inner.root")
+mask = sys.argv[1]
+samples = sys.argv[2]
+file = upopen("root_files/file_after_weights_"+str(mask)+samples".root")
 #trees = file.allkeys(filterclass=lambda x: issubclass(x, up.tree.TTreeMethods))
 tree = file["data"]
 geneta = tree.array('geneta')
@@ -23,9 +25,8 @@ for ireg in range(3):
     for ib in range(len(bins[:-1])):
         tmp = [ sid for geta,sid in zip(geneta,showerid[ireg]) if geta>bins[ib] and geta<bins[ib+1] ]
         frac.append( 1. - (np.count_nonzero(np.array(tmp)) / float(len(tmp))) )
-    print(frac)
     ax[0,ireg].hist(bins[:-1], bins, weights=frac)
 plt.xlabel('$|\eta|$')
 plt.ylabel('Fraction of complete showers')
-plt.savefig('figs/complete_fraction.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/complete_fraction.png')
+plt.savefig('figs/complete_fraction_'+str(mask)+samples+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/complete_fraction_'+str(mask)+samples+'.png')

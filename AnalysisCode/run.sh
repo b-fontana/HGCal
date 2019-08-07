@@ -66,6 +66,9 @@ do
       break;;
   esac
 done
+if [ "${fp1}" -eq 0 ] && [ "${fp2}" -eq 0 ] && [ "${METHOD}"=="ed" ]; then
+      echo "Running the full ed method."
+fi
 if [ "${fcompile}" -eq 0 ]; then
       echo "Warning: The code was not compiled!"; 
 fi
