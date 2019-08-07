@@ -1,0 +1,8 @@
+mingenen,20
+etareg,2.7,2.94
+nreg,3
+nlayers,28
+label,
+input,../HGCalMaskResolutionAna/summaries/summary_
+output,../HGCalMaskResolutionAna/pics_
+bckgcuts,0.55,0.61,0.67
