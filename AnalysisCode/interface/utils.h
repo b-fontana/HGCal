@@ -24,13 +24,13 @@ class VecOps {
   /*shifts vector one value to the right*/  
   std::vector<T> shift() {
     unsigned int size = a.size();
-    T tmp = a[size-1];
+    T tmp = a.at(size-1);
     typename std::vector<T>::iterator it;
-    for(it = a.end(); it!=a.begin(); --it) {
+    for(it = a.end()-1; it!=a.begin(); --it) {
       int i = it - a.begin();
-      a[i] = a[i-1];
+      a.at(i) = a.at(i-1);
     }
-    a[0] = tmp;
+    a.at(0) = tmp;
     return a;
   }
 
@@ -51,6 +51,30 @@ void check_key(const std::string& k, const mapstr<V>& m) {
     std::cout << "Inserted key: " << k << std::endl;
     throw std::invalid_argument("The key does not exist.");
   }
+}
+
+template<typename T>
+std::vector<double> linspace(T start_in, T end_in, int num_in)
+{
+  std::vector<double> linspaced;
+  double start = static_cast<double>(start_in);
+  double end = static_cast<double>(end_in);
+  double num = static_cast<double>(num_in);
+
+  if (num == 0) { return linspaced; }
+  if (num == 1) 
+    {
+      linspaced.push_back(start);
+      return linspaced;
+    }
+  
+  double delta = (end - start) / (num - 1);
+  for(int i=0; i < num-1; ++i)
+    {
+      linspaced.push_back(start + delta * i);
+    }
+  linspaced.push_back(end); //ensures that start and end are exactly the same as the input
+  return linspaced;
 }
 
 TGraphAsymmErrors* build_median_profile(TH2D* h);
