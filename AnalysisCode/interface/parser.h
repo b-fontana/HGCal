@@ -8,7 +8,7 @@
 #include <vector>
 #include <string>
 
-#include "../interface/types.h"
+#include "UserCode/AnalysisCode/interface/types.h"
 
 class CSVRow
 {

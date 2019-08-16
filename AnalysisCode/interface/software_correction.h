@@ -7,8 +7,9 @@
 #include "TFile.h"
 #include "TH1.h"
 #include "TGraph.h"
-#include "../interface/utils.h"
-#include "../interface/types.h"
+
+#include "UserCode/AnalysisCode/interface/utils.h"
+#include "UserCode/AnalysisCode/interface/types.h"
 
 int_ diff_ed(const vec1d<float_>&, const vec1d<float_>&, const vec1d<float_>&, const float_&);
 

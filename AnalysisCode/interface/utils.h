@@ -8,7 +8,7 @@
 #include "TH2.h"
 #include "TGraphAsymmErrors.h"
 
-#include "../interface/types.h"
+#include "UserCode/AnalysisCode/interface/types.h"
 
 template <typename T>
 class VecOps {

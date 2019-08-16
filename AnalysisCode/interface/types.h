@@ -7,6 +7,7 @@
 
 using char_ = char;
 using bool_ = bool;
+using double_ = double;
 using float_ = float;
 using int_ = int;
 using uint_ = unsigned int;
