@@ -7,10 +7,10 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TH1F.h"
 
-#include /*"UserCode/AnalysisCode/*/"../interface/utils.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/calibration.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/software_correction.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/parser.h"
+#include "UserCode/AnalysisCode/interface/utils.h"
+#include "UserCode/AnalysisCode/interface/calibration.h"
+#include "UserCode/AnalysisCode/interface/software_correction.h"
+#include "UserCode/AnalysisCode/interface/parser.h"
 
 int_ main(int_ argc, char_ **argv) {
   if(argc!=5) 
@@ -52,7 +52,7 @@ int_ main(int_ argc, char_ **argv) {
 	  if( row.size()!=2 ) {row.bad_row();}
 	  mingenen = std::stof(row[1]);
 	}
-      else if(row[0]=="etareg")
+      else if(row[0]=="etareg_"+std::string(samples)+"_ed")
 	{
 	  if( row.size()!=3 ) {row.bad_row();}
 	  etareg = {std::stof(row[1]), std::stof(row[2])};
@@ -77,7 +77,7 @@ int_ main(int_ argc, char_ **argv) {
 	  if( row.size()!=2 ) {row.bad_row();}
 	  outpath = row[1]+std::string(argv[2])+"/mask"+std::string(argv[4]);
 	}
-      else if(row[0]=="bckgcuts") 
+      else if(row[0]=="bckgcuts_"+std::string(samples)) 
 	{
 	  if( row.size()!=4 ) {row.bad_row();}
 	  bckgcuts = {std:stof(row[1]),std:stof(row[2]),std:stof(row[3])};
@@ -87,9 +87,9 @@ int_ main(int_ argc, char_ **argv) {
   uint_ n = etareg.size();
 
   //Calibration
-  Calibration calibration(mingenen, etareg, mask, label, samples, 
+  Calibration calibration(mingenen, etareg, nreg, label, samples, 
 			  mask, noPUFile, outpath);
-  calibration.nopu_calibration(6, true);
+  calibration.nopu_calibration(6, false);
   vec1d<mapstr<TF1*>> calib = calibration.calib;
 
 
@@ -204,7 +204,7 @@ int_ main(int_ argc, char_ **argv) {
     "std::vector< std::vector<float> > en_layer = {en_layer1, en_layer2, en_layer3};"
     "return en_layer;";
 
-  //ROOT::EnableImplicitMT(ncores);
+  ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame d1("data", noPUFile.c_str());
   d1.Define("abs_geneta", "abs(geneta)")
     .Define("en", def1)
@@ -306,7 +306,7 @@ int_ main(int_ argc, char_ **argv) {
     }
   };
 
-  //ROOT::EnableImplicitMT(ncores);
+  ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame d2("data", noPUFile.c_str());
   auto d2_def = d2.Define("abs_geneta", "fabs(geneta)")
     .Define("en", def1)
@@ -351,14 +351,15 @@ int_ main(int_ argc, char_ **argv) {
   //////////////THIRD PART//////////////////////////
   //////////////////////////////////////////////////
 
-  std::string fawname = "root_files/file_after_weights_" + std::to_string(mask) + std::string(samples)+".root";
+  std::string fawname = "root_files/final_" + std::to_string(mask) + std::string(samples)+"_ed.root";
   TFile *file = new TFile(fawname.c_str(), "RECREATE");
   file->cd();
   TTree *tree = new TTree("data", "Tree after weights");
-  float_ geneta;
+  float_ geneta, genphi;
   vec1d<float_> deltaE(nreg), deltaE_corr(nreg);
   vec1d<float_> shower_number(nreg);
   tree->Branch("geneta", &geneta);
+  tree->Branch("genphi", &genphi);
   tree->Branch("deltaE", &deltaE);
   tree->Branch("deltaE_corr", &deltaE_corr);
   tree->Branch("shower_number", &shower_number);
@@ -380,7 +381,7 @@ int_ main(int_ argc, char_ **argv) {
   }
   vec1d<float_> lowfact = showercorr.low_stats_factor(boundaries, corr_mode);
 
-  auto apply_weights = [&](float_ gen, float_ geta, 
+  auto apply_weights = [&](float_ gen, float_ geta, float_ gphi,
 			   vec1d<float_> en, vec1d<float_> noi,
 			   vec2d<float_> en_layer) {
     float_ f1=1., f2=0.;
@@ -477,16 +478,17 @@ int_ main(int_ argc, char_ **argv) {
       shower_number.at(ireg) = sid;
     }
     geneta = geta;
+    genphi = gphi;
     tree->Fill();
   };
 
-  //ROOT::EnableImplicitMT(ncores);
+  ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame dfinal("data", noPUFile.c_str());
   dfinal.Define("abs_geneta", "fabs(geneta)")
     .Define("en", def1)
     .Define("noise", def2)
     .Define("en_layer", def3)
-    .Foreach(apply_weights, {"genen", "abs_geneta", "en", "noise", "en_layer"});
+    .Foreach(apply_weights, {"genen", "abs_geneta", "genphi", "en", "noise", "en_layer"});
 
   file->cd();
   tree->Write();

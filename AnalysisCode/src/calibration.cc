@@ -1,6 +1,6 @@
-#include "../interface/calibration.h"
+#include "UserCode/AnalysisCode/interface/calibration.h"
 
-Calibration::Calibration(const float_ mingenen_, std::vector<float> etareg_, 
+Calibration::Calibration(const float_ mingenen_, std::vector<float_> etareg_, 
 			 const int_ nreg_, const std::string label_, 
 			 const std::string samples_, const uint_ mask_, 
 			 const std::string noPUFile_, const std::string outpath_): 
@@ -21,8 +21,8 @@ void Calibration::nopu_calibration(const int& nq, const bool& plot)
 {
   for(int_ ireg=1; ireg<=nreg; ++ireg) {      
     std::string hstr = "SR" + std::to_string(ireg);
-    vec3d<float> x = Calibration::energies_for_calibration("data", ireg);
-    typename std::vector<float>::const_iterator it;
+    vec3d<float_> x = Calibration::energies_for_calibration("data", ireg);
+    typename std::vector<float_>::const_iterator it;
 
     //loop over eta calibration regions
     for(it=etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
@@ -35,14 +35,14 @@ void Calibration::nopu_calibration(const int& nq, const bool& plot)
       std::string idstr = "sr" + std::to_string(ireg) + "from" + str1 + "to" + str2;
 
       uint_ ss = x[idx].size();
-      double xq0[ss], xq1[ss];
-      double probs[nq+1];
+      double_ xq0[ss], xq1[ss];
+      double_ probs[nq+1];
       for(int_ j=0; j<nq+1; ++j)
-	probs[j] = static_cast<double>(j)/nq;
+	probs[j] = static_cast<double_>(j)/nq;
  
       for(uint_ j=0; j<ss; ++j) {
-	xq0[j] = static_cast<double>(x[idx][j][0]);
-	xq1[j] = static_cast<double>(x[idx][j][1]);
+	xq0[j] = static_cast<double_>(x[idx][j][0]);
+	xq1[j] = static_cast<double_>(x[idx][j][1]);
       }
       double quantiles0[nq+1], quantiles1[nq+1]; 
       TMath::Quantiles(ss, nq+1, xq0, quantiles0, probs, kFALSE);
@@ -115,30 +115,30 @@ TF1* Calibration::calibrate_spectrum(TH2D* h, const std::string& title,
   return calibGr;
 }
 
-vec3d<float> Calibration::energies_for_calibration(const std::string& tname, 
+vec3d<float_> Calibration::energies_for_calibration(const std::string& tname, 
 						   const int& ireg) 
 {
-  vec3d<float> x;
+  vec3d<float_> x;
   //fill energies vector with 2d vectors, one per etaregion considered in the calibration
   for(uint_ i=0; i<this->etareg.size()-1; ++i) {
-    vec2d<float> etareg_row;
+    vec2d<float_> etareg_row;
     x.push_back(etareg_row);
   }
 
-  std::vector<float> newetareg(this->etareg.cbegin(), this->etareg.cend());
+  std::vector<float_> newetareg(this->etareg.cbegin(), this->etareg.cend());
   auto fill_layer_energies = [&x, &newetareg](const float& gen, const float& geta, 
 					      const float& en, const float& noi) {
     bool_ region_check = false;
-    typename std::vector<float>::const_iterator it;
-    for(it = newetareg.cbegin(); it!=(newetareg.cend()-1); ++it) {
-      if(geta < *it || geta > *(it+1))
+    typename std::vector<float_>::const_iterator it;
+    for(it = newetareg.cbegin(); newetareg.cend()-it>1; ++it) {
+      if(geta <= *it || geta > *(it+1))
 	continue; 
       assert(!region_check);
       region_check = true;
       //float_ avgnoise = noi * self.sr_area[ireg-1]/self.sr_area[2]
 
-      std::vector<float> row = {gen, geta, en, noi}; 
-      int_ idx = std::distance(newetareg.cbegin(), it);
+      std::vector<float_> row = {gen, geta, en, noi}; 
+      int_ idx = it - newetareg.cbegin();
       x.at(idx).push_back(row);
     }
   };

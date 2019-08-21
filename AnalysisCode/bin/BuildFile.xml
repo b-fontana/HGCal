@@ -1,8 +1,13 @@
 <use name="root"/>
+<use name="rootgraphics"/>
+<use name="roofit"/>
 <use name="UserCode/AnalysisCode"/>
+<lib name="ROOTDataFrame"/>
+<lib name="ROOTVecOps"/>
 <environment>
-  <bin name="analysis_ed" file="analysis_ed.cc"/>
-  <bin name="analysis_ed_weights" file="analysis_ed_weights.cc"/>
+  <bin name="photons_exe1" file="photons_ed.cc"></bin>
+  <bin name="photons_exe2" file="photons_fineeta.cc"></bin>
+  <bin name="pions_exe" file="pions.cc"></bin>
 </environment>
 <Flags CXXFLAGS="-O0"/>
 <Flags CXXFLAGS="-g"/>

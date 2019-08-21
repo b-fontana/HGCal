@@ -7,10 +7,10 @@
 #include "ROOT/RDataFrame.hxx"
 #include "TH1F.h"
 
-#include /*"UserCode/AnalysisCode/*/"../interface/utils.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/calibration.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/software_correction.h"
-#include /*"UserCode/AnalysisCode/*/"../interface/parser.h"
+#include "UserCode/AnalysisCode/interface/utils.h"
+#include "UserCode/AnalysisCode/interface/calibration.h"
+#include "UserCode/AnalysisCode/interface/software_correction.h"
+#include "UserCode/AnalysisCode/interface/parser.h"
 
 int_ main(int_ argc, char_ **argv) {
   if(argc!=5) 
@@ -37,7 +37,6 @@ int_ main(int_ argc, char_ **argv) {
   float_ mingenen;
   vec1d<float_> etareg;
   int_ nreg;
-  int_ nlayers;
   std::string label;
   std::string noPUFile;
   std::string outpath;
@@ -63,11 +62,6 @@ int_ main(int_ argc, char_ **argv) {
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
 	  nreg = std::stoi(row[1]);
-	}
-      else if(row[0]=="nlayers") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  nlayers = std::stoi(row[1]);
 	}
       else if(row[0]=="input") 
 	{
@@ -98,9 +92,10 @@ int_ main(int_ argc, char_ **argv) {
   TFile *file = new TFile(final.c_str(), "RECREATE");
   file->cd();
   TTree *tree = new TTree("data", "data");
-  float_ geneta;
+  float_ geneta, genphi;
   vec1d<float_> deltaE_corr(nreg);
   tree->Branch("geneta", &geneta);
+  tree->Branch("genphi", &genphi);
   tree->Branch("deltaE_corr", &deltaE_corr);
 
   std::string def1 =
@@ -132,7 +127,7 @@ int_ main(int_ argc, char_ **argv) {
     "return en_layer;";
 
   //produces the weights that will be later used to correct the energy distributions
-  auto calibrate_all = [&](float_ gen, float_ geta, vec1d<float_> en, vec1d<float_> noi) {
+  auto calibrate_all = [&](float_ gen, float_ geta, float_ gphi, vec1d<float_> en, vec1d<float_> noi) {
     float f1=1., f2=0.;
     for(int_ ireg=1; ireg<=nreg; ++ireg) {
       f1 = 1.;
@@ -173,6 +168,7 @@ int_ main(int_ argc, char_ **argv) {
       assert(f1!=1.);
     }
     geneta = geta;
+    genphi = gphi;
     tree->Fill();
   };
 
@@ -181,7 +177,7 @@ int_ main(int_ argc, char_ **argv) {
   auto d2_def = d2.Define("abs_geneta", "fabs(geneta)")
     .Define("en", def1)
     .Define("noi", def2);
-  d2_def.Foreach(calibrate_all, {"genen", "abs_geneta", "en", "noi"});
+  d2_def.Foreach(calibrate_all, {"genen", "abs_geneta", "genphi", "en", "noi"});
 
   file->cd();
   file->Write();
