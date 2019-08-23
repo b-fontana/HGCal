@@ -21,6 +21,12 @@ using vec2d = std::vector< std::vector<T> >;
 template <typename T> 
 using vec3d = std::vector< std::vector< std::vector<T> > >;
 
+template <typename T> 
+using vec4d = std::vector< std::vector< std::vector< std::vector<T> > > >;
+
+template <typename T> 
+using tup3 = std::tuple<T, T, T>;
+
 template <typename T>
 class vector3d {
  public:

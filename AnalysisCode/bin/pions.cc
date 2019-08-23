@@ -2,6 +2,8 @@
 #include <vector>
 #include <iterator>
 #include "TLinearFitter.h"
+#include "TF1.h"
+#include "TRandom.h"
 #include "TVectorD.h"
 #include "ROOT/RDataFrame.hxx"
 
@@ -27,12 +29,10 @@ int_ main(int_ argc, char_ **argv) {
 
   //variables
   std::string samples = argv[2];
-  //uint_ mask = std::stoi(argv[4]);
-  uint_ ncores = std::thread::hardware_concurrency();
-  uint_ nsubdetectors = 3;
+  uint_ mask = std::stoi(argv[4]);
   float_ mingenen;
   vec1d<float_> etareg;
-  //int_ nreg;
+  uint_ nreg;
   std::string label;
   std::string noPUFile;
   std::string outpath;
@@ -54,13 +54,11 @@ int_ main(int_ argc, char_ **argv) {
 					     std::stoi(row[3]));
 	  std::copy(etareg_d.begin(), etareg_d.end(), std::back_inserter(etareg));
 	}
-      /*
       else if(row[0]=="nreg") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
 	  nreg = std::stoi(row[1]);
 	}
-      */
       else if(row[0]=="input") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
@@ -72,16 +70,32 @@ int_ main(int_ argc, char_ **argv) {
 	  outpath = row[1]+std::string(argv[2])+"/mask"+std::string(argv[4])+"_Pions";
 	}
     }
-  
-  uint_ n = etareg.size();
 
   //Calibration
-  /*
   Calibration calibration(mingenen, etareg, nreg, label, samples, 
 			  mask, noPUFile, outpath);
-  calibration.nopu_calibration(6, false);
-  vec1d<mapstr<TF1*>> calib = calibration.calib;
-  */
+  calibration.pion_calibration(6, false, true);
+  //vec1d<mapstr<TF1*>> calib = calibration.calib;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /*
+  uint_ n = etareg.size();
+  uint_ ncores = std::thread::hardware_concurrency();
+  uint_ nsubdetectors = 3;
   int_ ireg=3;
   vec3d<double_> x;
   for(uint_ j=0; j<nsubdetectors; ++j) {
@@ -93,8 +107,14 @@ int_ main(int_ argc, char_ **argv) {
 	x[j].push_back(v);
       }
   }
+  vec2d<double_> xgen;
+    for(uint_ i=0; i<n-1; ++i)
+      {
+	vec1d<double_> v;
+	xgen.push_back(v);
+      }
 
-  auto fill_calib_vector = [&](int_ idet, float_ geta, float_ en)
+  auto fill_calib_vector = [&](int_ idet, float_ genen, float_ geta, float_ en)
     {
       bool_ region_check = false;
       typename std::vector<float_>::const_iterator it;
@@ -105,10 +125,10 @@ int_ main(int_ argc, char_ **argv) {
 	region_check = true;
 	int_ idx = it - etareg.cbegin();
 	x.at(idet).at(idx).push_back(en);
+	if(idet==0) xgen.at(idx).push_back(genen);
       }
     };
   auto cut = [](float_ var, float_ cut) {return var > cut;};
-  
   std::string mingenen_str = "static_cast<float>(" + std::to_string(mingenen) + ")";
   std::vector<std::string> subdet = {"CEE", "HEF", "HEB"};
   ROOT::EnableImplicitMT(ncores);
@@ -120,38 +140,47 @@ int_ main(int_ argc, char_ **argv) {
 	.Define("mingenen", mingenen_str)
 	.Define("idet", idet_str)
 	.Filter(cut, {"genen", "mingenen"})
-	.Foreach(fill_calib_vector, {"idet", "abs_geneta", ("en_sr"+std::to_string(ireg)+"_ROI").c_str()});	  
+	.Foreach(fill_calib_vector, {"idet", "genen", "abs_geneta", ("en_sr"+std::to_string(ireg)+"_ROI").c_str()});	  
     }
 
   //linear regression
   for(uint_ ieta=0; ieta<n-1; ++ieta)
     {
-      TLinearFitter *lf = new TLinearFitter(nsubdetectors);
-      lf->SetFormula("2*x[0] ++ 3*x[1] ++ 4*x[2]");
+      TRandom randNum;
+      TLinearFitter *lf = new TLinearFitter();
+      lf->SetFormula("x++y++z");
 
       assert(x[0][ieta].size() == x[1][ieta].size());
-      assert(x[0][ieta].size() == x[2][ieta].size());
-      int_ vsize = x[0][ieta].size()+x[1][ieta].size()+x[2][ieta].size();
+      int_ vsize = x[0][ieta].size()*nsubdetectors;
       double_* xdata = new double_[vsize];
       double_* ydata = new double_[x[0][ieta].size()];
-      //double_* edata = new double_[x[0][ieta].size()];
-      for(uint_ idata=0; idata<x[0][ieta].size(); ++idata)
+      double_* edata = new double_[x[0][ieta].size()];
+      for(uint_ idata=0; idata<x[0][ieta].size(); ++idata) 
 	{
 	  xdata[0 + idata*nsubdetectors] = x[0][ieta].at(idata);
 	  xdata[1 + idata*nsubdetectors] = x[1][ieta].at(idata);
 	  xdata[2 + idata*nsubdetectors] = x[2][ieta].at(idata);
-	  //edata[idata] = 0.01;
-	  ydata[idata] = xdata[0+idata*nsubdetectors] + xdata[1+idata*nsubdetectors] + xdata[2+idata*nsubdetectors];
+	  //std::cout << xdata[0 + idata*nsubdetectors] << ", " << xdata[1 + idata*nsubdetectors] << ", " << xdata[2 + idata*nsubdetectors] << std::endl;
+	  edata[idata] = 500.0;
+	  //True value: ydata[idata] = xdata[0+idata*nsubdetectors] + xdata[1+idata*nsubdetectors] + xdata[2+idata*nsubdetectors] + randNum.Gaus()*edata[idata];
+	  ydata[idata] = xgen[ieta].at(idata) + randNum.Gaus()*edata[idata];
+	  std::cout << xgen[ieta].at(idata) << std::endl;
 	}
-      lf->AssignData(x[0][ieta].size(), nsubdetectors, xdata, ydata);//, edata);
+      lf->AssignData(x[0][ieta].size(), nsubdetectors, xdata, ydata, edata);
       lf->Eval();
+      lf->PrintResults(3);
       TVectorD params;
       TVectorD errors;
       vec1d<double_> significances;
       lf->GetParameters(params);
-      for(uint_ i=0; i<nsubdetectors; ++i)
-	significances.push_back(lf->GetParSignificance(i));
       lf->GetErrors(errors);
+      for(uint_ i=0; i<nsubdetectors; ++i) 
+	significances.push_back(lf->GetParSignificance(i));
+
+      for(uint_ j=0; j<nsubdetectors; ++j) {
+	for(uint_ k=0; k<x[j][ieta].size(); ++k)
+	  assert(x[j][ieta][k] == xdata[j + k*nsubdetectors]);
+      }
 
       for(uint_ i=0; i<n-1; ++i)
 	{
@@ -161,31 +190,12 @@ int_ main(int_ argc, char_ **argv) {
 	}
       double_ chisquare = lf->GetChisquare();
       std::cout << "chisquare = " << chisquare << std::endl;
-      std::cout << std::endl;
-
-      //other formula//
-      /*
-      lf->SetFormula("pol3");
-      lf->Eval();
-      lf->GetParameters(params);
-      for(uint_ i=0; i<significances.size(); ++i)
-	significances[i] = lf->GetParSignificance(i);
-      lf->GetErrors(errors);
-      for(uint_ i=0; i<n-1; ++i)
-	{
-	  std::cout << "Eta region " << i+1 << std::endl;
-	  for(uint_ j=0; j<nsubdetectors; ++j)
-	    std::cout << "Subdetector " << j << ": " << params(j) << " +- " << errors(j) << "( significance : " << significances[j] << ")" << std::endl;
-	}
-      chisquare = lf->GetChisquare();
-      std::cout << "chisquare = " << chisquare << std::endl;
-      */
 
       delete lf;
-      delete xdata;
-      delete ydata;
-      //delete edata;
+      delete[] xdata;
+      delete[] ydata;
     }
+  */
 
   return 0;
 }
