@@ -31,11 +31,17 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression(vec4d<float_> x, cons
 {
   vec1d< tup3<float_> > factors;
   TRandom randNum;
-  TLinearFitter *lf = new TLinearFitter();
-  lf->SetFormula("x++y++z");
+  TLinearFitter *lf;
   for(uint_ ieta=0; ieta<this->etareg.size()-1; ++ieta)
     {
       assert(x[0][ieta].size() == x[1][ieta].size());
+
+      lf = new TLinearFitter();
+      lf->SetFormula("x++y++z");
+      /*
+      for(uint_ idet=0; idet<this->nsubdets; ++idet)
+	lf->SetParameter(idet, ("a"+std::to_string(idet)).c_str(), .33, .01, 0., 1);
+      */
       int_ vsize = x[0][ieta].size()*this->nsubdets;
       double_* xdata = new double_[vsize];
       double_* ydata = new double_[x[0][ieta].size()];
@@ -46,7 +52,7 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression(vec4d<float_> x, cons
 	  xdata[0 + idata*this->nsubdets] = static_cast<double>(x[0][ieta][idata][2]);
 	  xdata[1 + idata*this->nsubdets] = static_cast<double>(x[1][ieta][idata][2]);
 	  xdata[2 + idata*this->nsubdets] = static_cast<double>(x[2][ieta][idata][2]);
-	  edata[idata] = 1.0;
+	  edata[idata] = x[0][ieta][idata][0]/50.;
 	  //gen information is repeated; I could have used x[1] or x[2]
 	  assert(x[0][ieta][idata][0] == x[1][ieta][idata][0]);
 	  assert(x[0][ieta][idata][0] == x[2][ieta][idata][0]);
@@ -62,18 +68,38 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression(vec4d<float_> x, cons
       for(uint_ i=0; i<this->nsubdets; ++i) 
 	significances.push_back(lf->GetParSignificance(i));
       factors.push_back( tup3<float_>(params(0), params(1), params(2)) );
-      for(uint_ j=0; j<this->nsubdets; ++j) {
-	std::cout << "Subdetector " << j << ": " << params(j) << " +- " << errors(j) << " (significance : " << significances[j] << ")" << std::endl;
-	for(uint_ k=0; k<x[j][ieta].size(); ++k)
-	  assert(x[j][ieta][k][2] == xdata[j + k*this->nsubdets]);
-      }
+      for(uint_ j=0; j<this->nsubdets; ++j) 
+	{
+	  std::cout << "Subdetector " << j << ": " << params(j) << " +- " << errors(j) << std::endl;
+	  for(uint_ k=0; k<x[j][ieta].size(); ++k)
+	    assert(x[j][ieta][k][2] == xdata[j + k*this->nsubdets]);
+	}
       double_ chisquare = lf->GetChisquare();
       std::cout << "chisquare = " << chisquare << std::endl;
       
-      delete lf;
       delete[] xdata;
       delete[] ydata;
+      delete[] edata;
+      delete lf;
     }
+  return factors;
+}
+
+vec1d< tup3<float_> > Calibration::pions_linear_regression_python(vec4d<float_> x, const uint_& reg)
+{
+  for(uint_ idet=0; idet<this->nsubdets; ++idet) 
+    {
+      for(uint_ i=0; i<this->etareg.size()-1; ++i) 
+	{
+	  std::string fname = "linear_regression_det"+std::to_string(idet)+"_eta"+std::to_string(i)+".json";
+	  std::ofstream o(fname);
+	  auto json = TBufferJSON::ToJSON(&x[idet][i]);
+	  o << json << std::endl;
+	}
+    }
+  
+  std::exit(0);
+  vec1d< tup3<float_> > factors;
   return factors;
 }
 
@@ -99,7 +125,8 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	}
 
       //obtain the factors from a 3d linear regression
-      vec1d< tup3<float_> > flr = {std::make_tuple(1., 1., 1.)};//Calibration::pions_linear_regression(x, ireg);
+      std::cout << "----------------------------" << std::endl;
+      vec1d< tup3<float_> > flr = Calibration::pions_linear_regression(x, ireg);
       std::cout << "----------------------------" << std::endl;
 
       typename std::vector<float_>::const_iterator it;
@@ -124,10 +151,12 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	    Calibrating individual subdetectors would then be a bad idea (see Sec.6.2.11 Calorimetry, Wigmans, 2nd ed.).
 	  */
 	  //sum the reconstructed energy in the three subdetectors
+	  genen.push_back(x[0][idx][j][0]);
+	  geneta.push_back(x[0][idx][j][1]);
 	  recen.push_back( std::get<0>(flr[idx])*x[0][idx][j][2] + std::get<1>(flr[idx])*x[1][idx][j][2] 
 			   + std::get<2>(flr[idx])*x[2][idx][j][2] );
-	  xq0[j] = static_cast<double_>(recen.at(j));
-	  xq1[j] = static_cast<double_>(x[0][idx].at(j)[1]);
+	  xq0[j] = static_cast<double_>(genen.at(j));
+	  xq1[j] = static_cast<double_>(geneta.at(j));
 	}
 	double quantiles0[nq+1], quantiles1[nq+1]; 
 	TMath::Quantiles(ss, nq+1, xq0, quantiles0, probs, kFALSE);
@@ -136,10 +165,8 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	//relative calibration versus eta
 	std::string hn = idstr + "_" + this->samples + "_mask" + std::to_string(this->mask);
 	TH2D* htmp1 = new TH2D(("resVSeta_"+hn).c_str(), ";|#eta|;#DeltaE/E", 
-			       nq, quantiles1, 100, -1, 1);
+			       nq, quantiles1, 250, -1, 3);
 	for(uint_ i=0; i<ss; ++i) {
-	  genen.push_back(x[0][idx][i][0]);
-	  geneta.push_back(x[0][idx][i][1]);
 	  deltaE = (recen[i]/genen[i]) - 1.;
 	  htmp1->Fill(geneta[i], deltaE);
 	}
@@ -149,7 +176,7 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 
 	//relative calibration versus energy
 	TH2D *htmp2 = new TH2D(("resVSen_"+hn).c_str(), ";Reco energy [GeV];#DeltaE/E", 
-			       nq, quantiles0, 100, -1, 1);
+			       nq, quantiles0, 250, -1, 3);
 	for(uint_ i=0; i<ss; ++i) {
 	  recen[i] /= (this->calib[0][idstr]->Eval(geneta[i])+1.0);
 	  deltaE = (recen[i]/genen[i]) - 1.;
@@ -293,15 +320,15 @@ vec3d<float_> Calibration::energies_for_calibration(const std::string& tname,
       x.at(idx).push_back(row);
     }
   };
-  auto cut = [](float_ var, float_ cut) {return var > cut;};
+  auto cutmin = [](float_ var, float_ cut) {return var > cut;};
 
   std::string mingenen_str = "static_cast<float>(" + std::to_string(mingenen) + ")";
   uint_ ncores = std::thread::hardware_concurrency();
   ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame d(tname, noPUFile);
-  d.Define("abs_geneta", "abs(geneta)")
+  d.Define("abs_geneta", "fabs(geneta)")
     .Define("mingenen", mingenen_str)
-    .Filter(cut, {"genen", "mingenen"})
+    .Filter(cutmin, {"genen", "mingenen"})
     .Foreach(fill_layer_energies, {"genen", "abs_geneta",
 	  ("en_sr"+std::to_string(ireg)+"_ROI").c_str(), "noise_sr3_ROI"});
   return x;

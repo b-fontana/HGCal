@@ -18,6 +18,7 @@
 #include "TFile.h"
 #include "TLinearFitter.h"
 #include "TVectorD.h"
+#include "TBufferJSON.h"
 
 #include "UserCode/AnalysisCode/interface/utils.h"
 #include "UserCode/AnalysisCode/interface/types.h"
@@ -40,6 +41,7 @@ class Calibration
 			  const std::string&, const bool_&);
   vec3d<float> energies_for_calibration(const std::string&, const int&);
   std::vector< std::tuple<float_, float_, float_> > pions_linear_regression(vec4d<float_>, const uint_&);
+  std::vector< std::tuple<float_, float_, float_> > pions_linear_regression_python(vec4d<float_>, const uint_&);
   //void fill_layer_energies(const float&, const float&, const float&, const float&);
   void stop() {std::exit(0);}
  
