@@ -1,3 +1,4 @@
+import sys
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
 from matplotlib import rcParams as rc
@@ -8,7 +9,7 @@ import numpy as np
 
 mask = sys.argv[1]
 samples = sys.argv[2]
-file = upopen("root_files/file_after_weights_"+str(mask)+samples".root")
+file = upopen("root_files/file_after_weights_"+str(mask)+samples+".root")
 #trees = file.allkeys(filterclass=lambda x: issubclass(x, up.tree.TTreeMethods))
 tree = file["data"]
 geneta = tree.array('geneta')
@@ -29,4 +30,4 @@ for ireg in range(3):
 plt.xlabel('$|\eta|$')
 plt.ylabel('Fraction of complete showers')
 plt.savefig('figs/complete_fraction_'+str(mask)+samples+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/complete_fraction_'+str(mask)+samples+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/complete_fraction_'+str(mask)+samples+'.png')

@@ -34,5 +34,6 @@ for ireg in range(nreg):
         ax[1,ireg].hist(bins[:-1], bins, weights=counts, histtype='step', label='weight'+str(iw+1), color=colors[iw+1])
         ax[1,ireg].legend()
 plt.xlabel('Layers')
+plt.ylabel('Fraction of deposited energy')
 plt.savefig('figs/weights_'+str(mask)+samples+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/weights_'+str(mask)+samples+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/weights_'+str(mask)+samples+'.png')

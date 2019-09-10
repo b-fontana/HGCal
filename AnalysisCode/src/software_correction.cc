@@ -64,7 +64,7 @@ vec1d<TGraph*> SoftwareCorrection::build_weights_graphs(int_ region) {
   return g;
 }
 
-vec1d<float_> SoftwareCorrection::low_stats_factor(vec1d<int_> limits, std::string mode) {
+vec1d<float_> SoftwareCorrection::low_stats_factor(vec1d<uint_> limits, std::string mode) {
   vec1d<float_> f(nreg, 1.);
   TH1F* h;
   for(int_ ireg=0; ireg<nreg; ++ireg) {

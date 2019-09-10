@@ -19,6 +19,11 @@ class VecOps {
  public:
  VecOps(std::vector<T> a_): a(a_) {
     this->s = a.size();
+    if(this->s == 0)
+      {
+	std::cout << "VectorOps: No operations can be done on a zero-length vector." << std::endl;
+	std::exit(0);
+      }
   };
   
   /*shifts vector one value to the right*/  

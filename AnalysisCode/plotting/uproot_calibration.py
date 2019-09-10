@@ -26,4 +26,4 @@ for ireg in range(3):
 plt.ylabel('Counts')
 plt.legend()
 plt.savefig('figs/calibration_'+str(mask)+samples+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/calibration_'+str(mask)+samples+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/calibration_'+str(mask)+samples+'.png')

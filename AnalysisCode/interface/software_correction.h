@@ -33,7 +33,7 @@ class SoftwareCorrection {
   SoftwareCorrection(std::string);
   ~SoftwareCorrection();
   vec1d<TGraph*> build_weights_graphs(int_);
-  vec1d<float_> low_stats_factor(vec1d<int_>, std::string);
+  vec1d<float_> low_stats_factor(vec1d<uint_>, std::string);
 };
 
 #endif //SOFTWARE_CORRECTION_H

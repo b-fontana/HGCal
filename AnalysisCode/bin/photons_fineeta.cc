@@ -18,82 +18,34 @@ int_ main(int_ argc, char_ **argv) {
       std::cout << "Please specify both the samples and the mask to be used." << std::endl;
       std::exit(0);
     }
-  if(argv[1] != std::string("--samples"))
+  if(argv[3] != std::string("--samples"))
     {
       std::cout << "The first argument must specify the samples to be used." << std::endl;
       std::exit(0);
     }
-  else if(argv[3] != std::string("--mask"))
+  else if(argv[1] != std::string("--mask"))
     {
       std::cout << "The second argument must specify the mask to be used." << std::endl;
       std::exit(0);
     }
 
-  //variables
-  std::string samples = argv[2];
-  uint_ mask = std::stoi(argv[4]);
-  uint_ ncores = std::thread::hardware_concurrency();
-
-  float_ mingenen;
-  vec1d<float_> etareg;
-  int_ nreg;
-  std::string label;
-  std::string noPUFile;
-  std::string outpath;
-  vec1d<float_> bckgcuts;
-
-  std::ifstream infile("params.csv");
-  for(CSVIterator it(infile); it != CSVIterator(); ++it)
-    {
-      CSVRow row = *it;
-      if(row[0]=="mingenen") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  mingenen = std::stof(row[1]);
-	}
-      else if(row[0]=="etareg_"+std::string(samples)+"_fineeta")
-	{
-	  if( row.size()!=4 ) {row.bad_row();}
-	  vec1d<double_> etareg_d = linspace(std::stof(row[1]), std::stof(row[2]), 
-					     std::stoi(row[3]));
-	  std::copy(etareg_d.begin(), etareg_d.end(), std::back_inserter(etareg));
-	}
-      else if(row[0]=="nreg") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  nreg = std::stoi(row[1]);
-	}
-      else if(row[0]=="input") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  noPUFile = row[1]+"mask"+std::string(argv[4])+"_"+std::string(argv[2])+".root";
-	}
-      else if(row[0]=="output") 
-	{
-	  if( row.size()!=2 ) {row.bad_row();}
-	  outpath = row[1]+std::string(argv[2])+"/mask"+std::string(argv[4]);
-	}
-      else if(row[0]=="bckgcuts_"+std::string(samples)) 
-	{
-	  if( row.size()!=4 ) {row.bad_row();}
-	  bckgcuts = {std:stof(row[1]),std:stof(row[2]),std:stof(row[3])};
-	}
-    }
-
-  uint_ n = etareg.size();
-
   //Calibration
-  Calibration calibration(mingenen, etareg, nreg, label, samples, 
-			  mask, noPUFile, outpath);
-  calibration.nopu_calibration(6, false);
-  vec1d<mapstr<TF1*>> calib = calibration.calib;
+  vec1d<std::string> varnames = {"mingenen", "etareg_"+std::string(argv[4]), "nreg", "input"};
+  CalibratorInputParameters p("params_photons.csv", varnames, std::string(argv[2]), std::string(argv[4]));
+  Calibrator calibrator(p);
+  calibrator.create_photon_calibration_values(6, false, false);
+  vec1d<mapstr<TF1*>> calib = calibrator.calibration_values;
 
-  std::string final = "root_files/final_" + std::to_string(mask) + std::string(samples)+"_fineeta.root";
+  //variables
+  uint_ ncores = std::thread::hardware_concurrency();
+  size_t n = p.etareg.size();
+
+  std::string final = "root_files/final_" + std::to_string(p.mask) + std::string(p.samples)+"_fineeta.root";
   TFile *file = new TFile(final.c_str(), "RECREATE");
   file->cd();
   TTree *tree = new TTree("data", "data");
   float_ geneta, genphi;
-  vec1d<float_> deltaE_corr(nreg);
+  vec1d<float_> deltaE_corr(p.nreg);
   tree->Branch("geneta", &geneta);
   tree->Branch("genphi", &genphi);
   tree->Branch("deltaE_corr", &deltaE_corr);
@@ -129,18 +81,18 @@ int_ main(int_ argc, char_ **argv) {
   //produces the weights that will be later used to correct the energy distributions
   auto calibrate_all = [&](float_ gen, float_ geta, float_ gphi, vec1d<float_> en, vec1d<float_> noi) {
     float f1=1., f2=0.;
-    for(int_ ireg=1; ireg<=nreg; ++ireg) {
+    for(uint_ ireg=1; ireg<=p.nreg; ++ireg) {
       f1 = 1.;
       f2 = 0.;
       float_ encalib = 0.;
       typename vec1d<float_>::const_iterator it;
-      for(it = etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
+      for(it = p.etareg.cbegin(); it!=(p.etareg.cend()-1); ++it) {
 	std::string idstr;
 	//in case it lies outside the limits of the calibration
 	//the event is calibrated with the full calibration region
-	if (geta<etareg[0] || geta>etareg[n-1]) {
+	if (geta<p.etareg[0] || geta>p.etareg[n-1]) {
 	  idstr = "sr" + std::to_string(ireg) + "from" + 
-	    etastr(std::to_string(etareg[0])) + "to" + etastr(std::to_string(etareg[n-1]));
+	    etastr(std::to_string(p.etareg[0])) + "to" + etastr(std::to_string(p.etareg[n-1]));
 	}
 	else if (geta<*it || geta>*(it+1))
 	  continue;
@@ -173,7 +125,7 @@ int_ main(int_ argc, char_ **argv) {
   };
 
   ROOT::EnableImplicitMT(ncores);
-  ROOT::RDataFrame d2("data", noPUFile.c_str());
+  ROOT::RDataFrame d2("data", p.noPUFile.c_str());
   auto d2_def = d2.Define("abs_geneta", "fabs(geneta)")
     .Define("en", def1)
     .Define("noi", def2);

@@ -45,16 +45,13 @@ private:
   template<class T,class U> using umap = std::unordered_map<T,U>;
 
   //variables
-  const edm::EDGetTokenT<HGCRecHitCollection> recHitsToken_;  
   const edm::Service<TFileService> fs_;
-  const HGCalGeometry* gHGCal_;
-  DetId::Detector myDet_; 
-  ForwardSubdetector mySubDet_;
-  umap<int_layer, TFileDirectory> layersAnalysedDirs_; //one subdir per analysed layer
-  const std::vector<int_layer> layersAnalysed_;
-  const int_layer lastLayerEE_ = 28;
+  std::vector< edm::EDGetTokenT<HGCRecHitCollection> > recHitsTokens_;
+  const HGCalGeometry *gEE_, *gHSi_;
+  std::pair<DetId::Detector, DetId::Detector> Det_; 
+  ForwardSubdetector SubDet_;
   const int mask_ = 0;
-  std::string collectionName = "HGCEERecHits";
+  std::vector<std::string> colName_ = {"HGCEERecHits", "HGCHSiRecHits"};
 
   //functions
   virtual void beginStream(edm::StreamID) override;
