@@ -23,12 +23,14 @@ def RMS_Bias(f):
                 plot.plotGraph(cpos=0, ppos=ireg,
                                lc=lc[ih], mc=lc[ih], title='Bias vs eta', 
                                g=hrms[ih*NREG+ireg], yranges=(-1.,1.), 
+                               xaxis_title='|#eta|', yaxis_title='Bias',
                                draw_options=opt)
                 legends1[ireg].AddEntry(hrms[ih*NREG+ireg], 'Mask '+str(ih+3), 'L')
                 legends1[ireg].Draw()
                 plot.plotGraph(cpos=0, ppos=ireg+3, 
                                lc=lc[ih], mc=lc[ih], title='RMS/(1+Bias) vs eta', 
-                               g=hindep[ih*NREG+ireg], yranges=(0., 1.), 
+                               g=hindep[ih*NREG+ireg], yranges=(0., 1.),
+                               xaxis_title='|#eta|', yaxis_title='RMS/(1+Bias)', 
                                draw_options=opt)
                 legends2[ireg].AddEntry(hindep[ih*NREG+ireg], 'Mask '+str(ih+3), 'L')
                 legends2[ireg].Draw()

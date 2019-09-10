@@ -15,11 +15,6 @@ F.register('fidx',
            F.multiplicity.singleton,
            F.varType.int,
            "Which file index to consider.")
-F.register('outdir',
-           '/eos/user/b/bfontana/HGCalAnalysis/',
-           F.multiplicity.singleton,
-           F.varType.string,
-           "Output directory.")
 F.register('mask',
            -1,
            F.multiplicity.singleton,
@@ -40,16 +35,13 @@ for k,v in F.__dict__["_singletons"].items():
 #package loading
 process = cms.Process("postRECO", eras.Phase2C8)
 process.load('Configuration.StandardSequences.Services_cff')
+process.load("FWCore.MessageLogger.MessageLogger_cfi")
 process.load('SimGeneral.HepPDTESSource.pythiapdt_cfi')
 process.load('Configuration.StandardSequences.MagneticField_cff')
 process.load('Configuration.EventContent.EventContent_cff')
-process.load("FWCore.MessageService.MessageLogger_cfi")
-
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D28_cff')
 process.load('Configuration.Geometry.GeometryExtended2023D28Reco_cff')
-process.load('Configuration.StandardSequences.Services_cff')
-process.load("FWCore.MessageLogger.MessageLogger_cfi")
 """
 process.MessageLogger = cms.Service("MessageLogger",
                                     destinations = cms.untracked.vstring(
@@ -63,24 +55,30 @@ process.MessageLogger = cms.Service("MessageLogger",
 
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:phase2_realistic', '')
-from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import *
+from RecoLocalCalo.HGCalRecProducers.HGCalRecHit_cfi import dEdX_weights_v10
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
-indir1 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_inner_20190702/RECO/" #Inner radii
-indir2 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_bfontana_outer_20190702/RECO/" #Outer radii
+indir1 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_PionGun_SciStudies_bfontana_inner_20190716/RECO/"
+indir2 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_PionGun_SciStudies_bfontana_outer_20190716/RECO/"
+indir3 = "/eos/cms/store/cmst3/group/hgcal/CMG_studies/Production/FlatRandomEGunProducer_PionGun_CalibrationStudies_bfontana_central_20190822/RECO/"
+
 glob1 = glob.glob(os.path.join(indir1,"*.root"))
 glob2 = glob.glob(os.path.join(indir2,"*.root"))
+glob3 = glob.glob(os.path.join(indir3,"*.root"))
 if F.samples == 'all':
     glob_tot = glob1 + glob2
 elif F.samples == 'inner':
     glob_tot = glob1
 elif F.samples == 'outer':
     glob_tot = glob2
+elif F.samples == 'central':
+    glob_tot = glob3
 else:
     raise ValueError('Insert a valid "samples" option!')
+print("Total number of files: ", len(glob_tot))
 fNames = ["file:" + it for it in glob_tot][F.fidx]
-print(fNames)
+print("this file: ", fNames)
 
 if isinstance(fNames,list):     
     process.source = cms.Source("PoolSource",
@@ -92,21 +90,31 @@ else:
                         duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 
 process.RecHitsMasked = cms.EDProducer('HGCalMaskProd',
-                              LayersAnalysed = cms.vuint32(1,2),
-                              Mask = cms.uint32(F.mask))
+                            recHitsCEEToken = cms.InputTag('HGCalRecHit', 'HGCEERecHits'),
+                            recHitsHSiToken = cms.InputTag('HGCalRecHit', 'HGCHEFRecHits'),
+                            Mask = cms.uint32(F.mask))
 
 process.an = cms.EDAnalyzer("HGCalMaskResolutionAna",
-                            recHitCollection = cms.InputTag("HGCalRecHit","HGCEERecHits"),
-                            dEdXWeights = dEdX.weights,
-                            thicknessCorrection = cms.vdouble(1.132,1.092,1.084),
+                            recHitsCEEToken = cms.InputTag('HGCalRecHit','HGCEERecHits'),
+                            recHitsHSiToken = cms.InputTag('HGCalRecHit','HGCHEFRecHits'),
+                            recHitsHScToken = cms.InputTag('HGCalRecHit','HGCHEBRecHits'),
+                            thicknessCorrection = cms.vdouble(0.781, 0.776, 0.769),
+                            dEdXWeights = dEdX_weights_v10,
+                            geometrySource = cms.vstring('HGCalEESensitive',
+                                                         'HGCalHESiliconSensitive',
+                                                         'HGCalHEScintillatorSensitive'),
+                            distancesSR1 = cms.vdouble(30., 30., 30.),
+                            distancesSR2 = cms.vdouble(40., 40., 40.),
+                            distancesSR3 = cms.vdouble(50., 50., 50.),
+                            nControlRegions = cms.int32(2), #5 for photons
+                            particle = cms.string('pion'),
                             byClosest = cms.bool(False))
+
 process.an_mask = process.an.clone(
-    recHitCollection = cms.InputTag("RecHitsMasked", "HGCEERecHits"))
+    recHitsCEEToken = cms.InputTag("RecHitsMasked", "HGCEERecHits"),
+    recHitsHSiToken = cms.InputTag("RecHitsMasked", "HGCHSiRecHits"))
 
 pu_str = "pu" if F.pu else "nopu"
-#outsubdir = F.outdir+'mask'+str(F.mask)+'_'+F.samples+'_weight/'
-#f not os.path.isdir(outsubdir):
-outsubdir = F.outdir
 fileName = str(F.fidx)+"_mask"+str(F.mask)+"_"+F.samples+"_"+pu_str
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string(fileName+".root"))

@@ -35,7 +35,8 @@ process.source = cms.Source("PoolSource",
                             duplicateCheckMode = cms.untracked.string("noDuplicateCheck"))
 
 process.prod = cms.EDProducer('HGCalMaskProd',
-                              LayersAnalysed = cms.vuint32(1,2),
+                              EE_col = cms.InputTag("HGCalRecHit", "HGCEERecHits"),
+                              HSi_col = cms.InputTag("HGCalRecHit","HGCHEBRecHits"),
                               Mask = cms.uint32(3))
 
 process.out = cms.OutputModule("PoolOutputModule",

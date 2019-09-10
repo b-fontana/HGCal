@@ -8,7 +8,6 @@ class Calibration(PartialWafersStudies, object):
         super(Calibration, self).__init__(flags)
         self.calib = OrderedDict({'L0': {}, 'L1': {}, 'L2': {}})
         self.mingenen = self.flags.mingenen
-        print(self.etaregions)
         self.etas_l = self.etaregions[:-1]
         self.etas_r = np.roll(self.etaregions, shift=-1)[:-1]
         self.label = self.flags.plotLabel
@@ -127,8 +126,7 @@ class Calibration(PartialWafersStudies, object):
                 htmp.Delete()
         fIn.Close()
 
-    
-
+    #correct arguments of np.percentile
     def pu_calibration(self, nq=10, plot=True):
         """
         To be used in pile-up situations only.
@@ -149,7 +147,7 @@ class Calibration(PartialWafersStudies, object):
                 idx = np.where(self.etas_l==ieta1)[0][0]
                 idstr = 'sr{}_from{}to{}'.format(ireg, ES(ieta1), ES(ieta2))
                 xq=np.percentile(x, [i*100./nq for i in range(0,nq+1)], axis=0)
-
+                print(xq)
                 #relative calibration versus eta
                 resolVsNoiseFrac = TH2F('resVSnoisefrac_'+self.samples+'_'+self.mask+'_',
                                         ';<Noise> [GeV];#DeltaE [GeV]', nq, 

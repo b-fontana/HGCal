@@ -26,9 +26,9 @@ class PartialWafersStudies(object):
     def etaregions(self):
         if self.flags.method == 'fineeta':
             if self.flags.samples == 'inner':
-                self._etaregions = np.linspace(2.7, 3.03, 331)
+                self._etaregions = np.around(np.linspace(2.7, 3.03, 331), 3)
             elif self.flags.samples == 'outer':
-                self._etaregions = np.linspace(1.45, 1.65, 201)
+                self._etaregions = np.around(np.linspace(1.45, 1.65, 201), 3)
         elif self.flags.method == 'ed':
             if self.flags.samples == 'inner':
                 self._etaregions = np.array((2.7, 2.94))

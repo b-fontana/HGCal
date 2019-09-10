@@ -41,7 +41,8 @@ def plotHistograms(histos, cdims, pcoords, cname):
                 if ih%3==0: it += 1
                 h = histos[ih]
                 if ih<6:
-                    plot.plotHistogram(cpos=0, ppos=ih, h=h, 
+                    plot.plotHistogram(cpos=0, ppos=ih, h=h,
+                                       lw=3,mc=1,msize=.5,lc=1, 
                                        title=titles[it], draw_options='colz')
                     if ih<3:
                         tex = plot.setLatex(ts=0.04)
@@ -199,11 +200,13 @@ def main():
     if FLAGS.mode == 1:
         hn = ['den{}', 'den_eta{}', 'den{}_2D_res', 'den{}_2D_events']
         for ireg in range(1,NREG+1):
-            histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg),';#Delta E/E;PDF',
-                                                  100, -1.1, .8)
+            bins = Carray('d', np.arange(-1.05, .8, 0.01))
+            strings = ';#Delta E/E_{gen};PDF'
+            histos[hn[0].format(ireg)] = TH1F(hn[0].format(ireg), strings,
+                                              len(bins)-1, bins)
             histos[hn[1].format(ireg)] = TH2F(hn[1].format(ireg), ';|#eta|;#Delta E/E',
-                                                  etabins, etainf, etasup,
-                                                  enbins, eninf, ensup)
+                                              etabins, etainf, etasup,
+                                              enbins, eninf, ensup)
             histos[hn[2].format(ireg)] = TH2F(hn[2].format(ireg), ';|#eta|;#phi',
                                               50, etainf, etasup,
                                               phibins, -TMath.Pi(), TMath.Pi())
@@ -213,6 +216,7 @@ def main():
     elif FLAGS.mode == 2:
         fracEn = np.zeros((NREG,NLAYERS), dtype=float)
         countfracEn = np.zeros((NREG,NLAYERS), dtype=int)
+        
         for i in range(0, data.GetEntriesFast()):
             data.GetEntry(i)
             genen    = getattr(data,'genen')        
@@ -246,8 +250,8 @@ def main():
                     recen = f1*recen - f2 
                 for il in range(1,NLAYERS+1):
                     v = f1*getattr(data,'en_sr{}_layer{}'.format(ireg,il)) - f2
-                    if ( (FLAGS.samples == "inner" and geneta < 2.75 or
-                          FLAGS.samples == "outer" and geneta > 1.6) and
+                    if ( (FLAGS.samples == "inner" and geneta < etaregions[0]+0.05 or
+                          FLAGS.samples == "outer" and geneta > etaregions[-1]-0.05) and
                          recen != 0 ):
                         fracEn[ireg-1,il-1] += v / recen
                         countfracEn[ireg-1,il-1] += 1
@@ -457,7 +461,14 @@ def main():
                 exbins.append( horizerror )
                 rms.append(tmp.GetRMS())
                 erms.append(tmp.GetRMSError())
+                """
+                xq = Carray('d', [0.16,0.5,0.84]) 
+                yq = Carray('d', [0.0,0.0,0.0 ])
+                tmp.GetQuantiles(3,yq,xq)
+                bias.append(yq[1])
+                """
                 bias.append(tmp.GetMean())
+                #ebias.append((yq[0]+yq[2])/2)
                 ebias.append(tmp.GetMeanError())
                 tmp.Delete()
             xbins, exbins = np.array(xbins), np.array(exbins)
@@ -524,7 +535,14 @@ def main():
                     exbins.append( horizerror )
                     rms.append(tmp.GetRMS())
                     erms.append(tmp.GetRMSError())
+                    """
+                    xq = Carray('d', [0.16,0.5,0.84]) 
+                    yq = Carray('d', [0.0,0.0,0.0 ])
+                    tmp.GetQuantiles(3,yq,xq)
+                    bias.append(yq[1])
+                    """
                     bias.append(tmp.GetMean())
+                    #ebias.append((yq[0]+yq[2])/2)
                     ebias.append(tmp.GetMeanError())
                     tmp.Delete()
                 xbins, exbins = np.array(xbins), np.array(exbins)
@@ -584,6 +602,6 @@ if __name__ == "__main__":
     base = PartialWafersStudies(FLAGS)
     NREG, NLAYERS, A = base.nsr, base.nlayers, base.sr_area
     etaregions = base.etaregions
-    if FLAGS.mode == 'ed':
+    if FLAGS.method == 'ed':
         bckgcuts = np.array(FLAGS.bckgcuts)
     main()

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-ARGS=`getopt -o "sca" -l "summary,calibrate,analysis,mask:,samples:,mode:,method:,apply_weights,all" -n "getopts_${0}" -- "$@"`
+ARGS=`getopt -o "sca" -l "summary,calibrate,analysis,mask:,samples:,mode:,method:,particles:,apply_weights,all" -n "getopts_${0}" -- "$@"`
 
 #Bad arguments
 if [ $? -ne 0 ];
@@ -61,6 +61,14 @@ do
       fi
       shift 2;;
 
+    --particles)    
+      if [ -n "$2" ];
+      then
+        PARTICLES="${2}";
+	echo "PARTICLES: ${2}";
+      fi
+      shift 2;;
+
     --apply_weights)
       fw=1;
       echo "Weights being applied."; 
@@ -90,14 +98,14 @@ if [ "${fs}" -eq 1 ]; then
 	allsamples=("inner" "outer")
 	for imask in {3..6}; do
 	    for isample in "${allsamples[@]}"; do
-		OUTFILE=summary_mask"${imask}"_"${isample}".root
-		python scripts/summarizeROIforCalibration.py --noPUFile /eos/user/b/bfontana/HGCalMaskResolution/mask"${imask}"_"${isample}"/hadd_mask"${imask}"_"${isample}"_nopu.root --samples "${isample}" --outpath "${OUTFILE}"  1>/dev/null &
+		OUTFILE=summaries/summary_mask"${imask}"_"${isample}"_"${PARTICLES}".root
+		python scripts/summarizeROIforCalibration.py --noPUFile /eos/user/b/bfontana/HGCalMaskResolution/"${PARTICLES}"/mask"${imask}"_"${isample}"/hadd_mask"${imask}"_"${isample}"_nopu.root --samples "${isample}" --outpath "${OUTFILE}"  1>/dev/null &
 	    done
 	done
     else
-	OUTFILE=summary_mask"${MASK}"_"${SAMPLES}".root;
+	OUTFILE=summaries/summary_mask"${MASK}"_"${SAMPLES}"_"${PARTICLES}".root;
 	echo "Summarize!";
-	python scripts/summarizeROIforCalibration.py --noPUFile /eos/user/b/bfontana/HGCalMaskResolution/mask"${MASK}"_"${SAMPLES}"/hadd_mask"${MASK}"_"${SAMPLES}"_nopu.root --samples "${SAMPLES}" --outpath "${OUTFILE}";
+	python scripts/summarizeROIforCalibration.py --noPUFile /eos/user/b/bfontana/HGCalMaskResolution/"${PARTICLES}"/mask"${MASK}"_"${SAMPLES}"/hadd_mask"${MASK}"_"${SAMPLES}"_nopu.root --samples "${SAMPLES}" --outpath "${OUTFILE}";
     fi
 fi
 
@@ -108,13 +116,13 @@ if [ "${fc}" -eq 1 ]; then
 	allsamples=("inner" "outer")
 	for imask in {3..6}; do
 	    for isample in "${allsamples[@]}"; do
-		OUTFILE=summary_mask"${imask}"_"${isample}".root
+		OUTFILE=summaries/summary_mask"${imask}"_"${isample}".root
 		python scripts/runROICalibration.py --noPUFile "${OUTFILE}"  --outpath pics_"${isample}"/mask"${imask}" --samples "${isample}" --mask "${imask}" --method "${METHOD}"  1>/dev/null &
 	    done
 	done
     else
 	echo "Calibrate!";
-	OUTFILE=summary_mask"${MASK}"_"${SAMPLES}".root;
+	OUTFILE=summaries/summary_mask"${MASK}"_"${SAMPLES}".root;
 	python scripts/runROICalibration.py --noPUFile "${OUTFILE}"  --outpath pics_"${SAMPLES}"/mask"${MASK}" --samples "${SAMPLES}" --mask "${MASK}" --method "${METHOD}";
     fi
 fi
@@ -126,14 +134,14 @@ if [ "${fa}" -eq 1 ]; then
 	allsamples=("inner" "outer")
 	for imask in {3..6}; do
 	    for isample in "${allsamples[@]}"; do
-		OUTFILE=summary_mask"${imask}"_"${isample}".root
-		python scripts/analysis.py --noPUFile summary_mask"${imask}"_"${isample}".root --samples "${isample}" --mode "${MODE}" --bckgcuts "${BCKGCUTS[@]}" --outpath pics_"${isample}"/mask"${imask}" --mask "${imask}" --apply_weights "${fw}" --method "${METHOD}"  1>/dev/null &
+		OUTFILE=summaries/summary_mask"${imask}"_"${isample}".root
+		python scripts/analysis.py --noPUFile "${OUTFILE}" --samples "${isample}" --mode "${MODE}" --bckgcuts "${BCKGCUTS[@]}" --outpath pics_"${isample}"/mask"${imask}" --mask "${imask}" --apply_weights "${fw}" --method "${METHOD}"  1>/dev/null &
 	    done
 	done
     else
 	echo "Analyze!";
-	OUTFILE=summary_mask"${MASK}"_"${SAMPLES}".root;
-	python scripts/analysis.py --noPUFile summary_mask"${MASK}"_"${SAMPLES}".root --samples "${SAMPLES}" --mode "${MODE}" --bckgcuts "${BCKGCUTS[@]}" --outpath pics_"${SAMPLES}"/mask"${MASK}" --mask "${MASK}" --apply_weights "${fw}" --method "${METHOD}"
+	OUTFILE=summaries/summary_mask"${MASK}"_"${SAMPLES}".root;
+	python scripts/analysis.py --noPUFile "${OUTFILE}" --samples "${SAMPLES}" --mode "${MODE}" --bckgcuts "${BCKGCUTS[@]}" --outpath pics_"${SAMPLES}"/mask"${MASK}" --mask "${MASK}" --apply_weights "${fw}" --method "${METHOD}"
     fi
 fi
 
