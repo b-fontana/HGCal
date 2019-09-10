@@ -26,31 +26,25 @@
 class Calibration 
 {
  private:
-  const float_ mingenen;
-  vec1d<float_> etareg;
+  const InputParameters p;
   vec1d<float_> etareg_shift;
-  const uint_ nreg;
-  const std::string label;
-  const std::string samples;
-  const uint_ mask;
-  const std::string noPUFile;
-  const std::string outpath;
-  const uint_ nsubdets;
+  
 
   TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, 
 			  const std::string&, const bool_&);
-  vec3d<float> energies_for_calibration(const std::string&, const int&);
-  std::vector< std::tuple<float_, float_, float_> > pions_linear_regression(vec4d<float_>, const uint_&);
-  std::vector< std::tuple<float_, float_, float_> > pions_linear_regression_python(vec4d<float_>, const uint_&);
+  vec3d<float> values_for_calibration(const std::string&, const std::string&, 
+				      const uint_&, const uint_&, std::optional<vec1d<float_>> etas = std::nullopt);
+  vec3d<float> values_for_compensation(const vec1d<std::string>&, const uint_&);
+  vec1d< tup3<float_> > pions_linear_regression(vec4d<float_>, const uint_&);
+  vec1d< tup3<float_> > pions_linear_regression_python(vec4d<float_>, const uint_&);
+  void compensation(const int&, const vec1d<tup3<float_>>&, const bool&, const bool&);
   //void fill_layer_energies(const float&, const float&, const float&, const float&);
   void stop() {std::exit(0);}
  
  public: 
   vec1d<mapstr<TF1*>> calib; 
 
-  Calibration(const float_, const std::vector<float_>, const uint_,
-	      const std::string, const std::string, const uint_,
-	      const std::string, const std::string);
+  Calibration(const InputParameters&);
 
   void pion_calibration(const int_&, const bool_&, const bool_&);
   void photon_calibration(const int&, const bool_&, const bool_&);

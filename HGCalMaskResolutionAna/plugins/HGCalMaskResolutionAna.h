@@ -32,13 +32,9 @@
 
 #include "TLorentzVector.h"
 #include "TTree.h"
+#include "TH1F.h"
 
 #include <string>
-
-/**
-   @class HGCalMaskResolutionAna
-   @author P. Silva (CERN)
-*/
 
 class HGCalMaskResolutionAna : public edm::EDAnalyzer 
 {
@@ -55,20 +51,34 @@ class HGCalMaskResolutionAna : public edm::EDAnalyzer
   GlobalPoint projectHitPositionAt(float z,float eta,float phi);
 
   edm::EDGetTokenT<edm::HepMCProduct> mc_;
-  edm::EDGetTokenT<HGCRecHitCollection> recHitsEE_;
+  std::vector< edm::EDGetTokenT<HGCRecHitCollection> > recHitsTokens_;
   edm::EDGetTokenT<reco::GenParticleCollection> genParticles_;
-  edm::EDGetTokenT<std::vector<SimTrack>> simTracks_;
-  edm::EDGetTokenT<std::vector<SimVertex>> simVertices_;
-  edm::EDGetTokenT<std::vector<int>> genBarCodes_;
 
   hgcal::RecHitTools recHitTools_;
 
-  TTree *tree_;
-  std::vector<SlimmedHit> *slimmedHits_;
-  std::vector<SlimmedROI> *slimmedROIs_;
-  TLorentzVector *genVertex_;
+  std::vector<SlimmedHit>* slimmedHits_;
+  std::vector<SlimmedROI>* slimmedROIs_;
+  TLorentzVector* genVertex_;
 
-  std::vector<double> dEdXWeights_, thicknessCorrection_;
+  std::vector< TH1F* > zhist;
+  std::vector< TH1F* > xhist;
+  std::vector< TH1F* > yhist; 
+  std::vector< TH1F* > zsidehist;
+  std::vector< TH1F* > ehist;
+  std::vector< TH1F* > layerhist;
+  std::vector< TH1F* > offsetlayerhist;
+
+  TTree* tree_;
+  std::vector< std::string > treenames_;
+
+  std::vector<double> thicknessCorrection_;
+  std::vector<double> dEdXWeights_;
+  std::vector<std::string> geometrySource_;
+  std::vector<double> distancesSR1_, distancesSR2_, distancesSR3_;
+  int nControlRegions_;
+  std::string particle_;
+  unsigned int nSubDets_;
+  int particleId_;
   bool byClosest_;
 };
  

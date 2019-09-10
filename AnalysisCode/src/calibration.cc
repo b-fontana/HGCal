@@ -1,13 +1,9 @@
 #include "UserCode/AnalysisCode/interface/calibration.h"
 
-Calibration::Calibration(const float_ mingenen_, std::vector<float_> etareg_, 
-			 const uint_ nreg_, const std::string label_, 
-			 const std::string samples_, const uint_ mask_, 
-			 const std::string noPUFile_, const std::string outpath_): 
-  mingenen(mingenen_), etareg(etareg_), nreg(nreg_), label(label_), 
-  samples(samples_), mask(mask_), noPUFile(noPUFile_), outpath(outpath_), nsubdets(3) {
-  etareg_shift = VecOps(etareg).shift();
-  for(uint_ i=0; i<nreg; ++i) {
+Calibration::Calibration(const InputParameters& p_): p(p_)  
+{
+  etareg_shift = VecOps(p.etareg).shift();
+  for(size_t i=0; i<p.nreg; ++i) {
     mapstr<TF1*> tmpmap;
     calib.push_back(tmpmap);
   }
@@ -32,47 +28,43 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression(vec4d<float_> x, cons
   vec1d< tup3<float_> > factors;
   TRandom randNum;
   TLinearFitter *lf;
-  for(uint_ ieta=0; ieta<this->etareg.size()-1; ++ieta)
+  for(uint_ ieta=0; ieta<this->p.etareg_central.size()-1; ++ieta)
     {
       assert(x[0][ieta].size() == x[1][ieta].size());
 
       lf = new TLinearFitter();
       lf->SetFormula("x++y++z");
-      /*
-      for(uint_ idet=0; idet<this->nsubdets; ++idet)
-	lf->SetParameter(idet, ("a"+std::to_string(idet)).c_str(), .33, .01, 0., 1);
-      */
-      int_ vsize = x[0][ieta].size()*this->nsubdets;
+      int_ vsize = x[0][ieta].size()*this->p.nsubdets;
       double_* xdata = new double_[vsize];
       double_* ydata = new double_[x[0][ieta].size()];
       double_* edata = new double_[x[0][ieta].size()];
       for(uint_ idata=0; idata<x[0][ieta].size(); ++idata) 
 	{
-	  //TLinearFitter only works with doubles
-	  xdata[0 + idata*this->nsubdets] = static_cast<double>(x[0][ieta][idata][2]);
-	  xdata[1 + idata*this->nsubdets] = static_cast<double>(x[1][ieta][idata][2]);
-	  xdata[2 + idata*this->nsubdets] = static_cast<double>(x[2][ieta][idata][2]);
+	  //TLinearFitter.AssignData only works with doubles
+	  xdata[0 + idata*this->p.nsubdets] = static_cast<double>(x[0][ieta][idata][2]);
+	  xdata[1 + idata*this->p.nsubdets] = static_cast<double>(x[1][ieta][idata][2]);
+	  xdata[2 + idata*this->p.nsubdets] = static_cast<double>(x[2][ieta][idata][2]);
 	  edata[idata] = x[0][ieta][idata][0]/50.;
 	  //gen information is repeated; I could have used x[1] or x[2]
 	  assert(x[0][ieta][idata][0] == x[1][ieta][idata][0]);
 	  assert(x[0][ieta][idata][0] == x[2][ieta][idata][0]);
 	  ydata[idata] = x[0][ieta][idata][0] + randNum.Gaus()*edata[idata];
 	}
-      lf->AssignData(x[0][ieta].size(), this->nsubdets, xdata, ydata, edata);
+      lf->AssignData(x[0][ieta].size(), this->p.nsubdets, xdata, ydata, edata);
       lf->Eval();
       TVectorD params;
       TVectorD errors;
       vec1d<double_> significances;
       lf->GetParameters(params);
       lf->GetErrors(errors);
-      for(uint_ i=0; i<this->nsubdets; ++i) 
+      for(uint_ i=0; i<this->p.nsubdets; ++i) 
 	significances.push_back(lf->GetParSignificance(i));
       factors.push_back( tup3<float_>(params(0), params(1), params(2)) );
-      for(uint_ j=0; j<this->nsubdets; ++j) 
+      for(uint_ j=0; j<this->p.nsubdets; ++j) 
 	{
 	  std::cout << "Subdetector " << j << ": " << params(j) << " +- " << errors(j) << std::endl;
 	  for(uint_ k=0; k<x[j][ieta].size(); ++k)
-	    assert(x[j][ieta][k][2] == xdata[j + k*this->nsubdets]);
+	    assert(x[j][ieta][k][2] == xdata[j + k*this->p.nsubdets]);
 	}
       double_ chisquare = lf->GetChisquare();
       std::cout << "chisquare = " << chisquare << std::endl;
@@ -85,11 +77,14 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression(vec4d<float_> x, cons
   return factors;
 }
 
+/*
+Requires more work on importing the result of the regression
+*/
 vec1d< tup3<float_> > Calibration::pions_linear_regression_python(vec4d<float_> x, const uint_& reg)
 {
-  for(uint_ idet=0; idet<this->nsubdets; ++idet) 
+  for(uint_ idet=0; idet<this->p.nsubdets; ++idet) 
     {
-      for(uint_ i=0; i<this->etareg.size()-1; ++i) 
+      for(uint_ i=0; i<this->p.etareg_central.size()-1; ++i) 
 	{
 	  std::string fname = "linear_regression_det"+std::to_string(idet)+"_eta"+std::to_string(i)+".json";
 	  std::ofstream o(fname);
@@ -97,10 +92,34 @@ vec1d< tup3<float_> > Calibration::pions_linear_regression_python(vec4d<float_> 
 	  o << json << std::endl;
 	}
     }
-  
   std::exit(0);
   vec1d< tup3<float_> > factors;
   return factors;
+}
+
+/*return perhaps a std::function that describes the Fermi function, 
+  plus store new TF1 in the calib dictionary for later evaluation*/
+void Calibration::compensation(const int& ireg, const vec1d<tup3<float_>>& flr, const bool& pu, const bool& plot)
+{
+  if(pu==true)
+    {
+      std::cout << "PU calibration is not yet implemented." << std::endl;
+      std::exit(0);
+    }
+  for(size_t i=0; i<p.nreg; ++i) 
+    {
+      if(this->calib[i].size() == 0 && i!=2) //the PU calibration can be undefined
+	{
+	  std::cout << "The calibration functions have to be defined before calling compensation()!" << std::endl;
+	  std::exit(0);
+	}
+    }
+  
+  ///////////////////////////////////////
+  //std::string enstr = std::to_string(*it) + "_" + std::to_string(*(it+1));
+  //TH2D* h = new TH2D(("Cglob_"+enstr).c_str(), ";|C_{glob}|;#DeltaE/E", 20, 0.3, 1.3, 100, -1, 1);
+
+
 }
 
 void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& plot) 
@@ -111,27 +130,31 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
       std::exit(0);
     }
 
+  std::string fregression = ( "../HGCalMaskResolutionAna/summaries/summary_mask" + std::to_string(this->p.mask) 
+			      + "_central_Pions.root" );
   std::vector<std::string> subdet = {"CEE", "HEF", "HEB"};
-  vec4d<float_> x;
-  for(uint_ ireg=1; ireg<=nreg; ++ireg) 
+  vec4d<float_> x, x_regression;
+  for(uint_ ireg=1; ireg<=p.nreg; ++ireg) 
     {
       x.clear();
-      std::string hstr = "SR" + std::to_string(ireg);
-      for(uint_ idet=0; idet<this->nsubdets; ++idet)
+      x_regression.clear();
+      for(uint_ idet=0; idet<this->p.nsubdets; ++idet)
 	{
 	  vec3d<float_> vtmp; 
 	  x.push_back(vtmp);
-	  x[idet] = Calibration::energies_for_calibration(subdet[idet].c_str(), ireg);
+	  x_regression.push_back(vtmp);
+	  x[idet] = Calibration::values_for_calibration(this->p.noPUFile, "summary", idet+1, ireg);
+	  x_regression[idet] = Calibration::values_for_calibration(fregression, "summary", idet+1, ireg, this->p.etareg_central);
 	}
 
       //obtain the factors from a 3d linear regression
       std::cout << "----------------------------" << std::endl;
-      vec1d< tup3<float_> > flr = Calibration::pions_linear_regression(x, ireg);
+      vec1d< tup3<float_> > flr = Calibration::pions_linear_regression(x_regression, ireg);
       std::cout << "----------------------------" << std::endl;
 
       typename std::vector<float_>::const_iterator it;
-      for(it=etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
-	int_ idx = std::distance(etareg.cbegin(), it);
+      for(it=p.etareg.cbegin(); it!=(p.etareg.cend()-1); ++it) {
+	int_ idx = std::distance(p.etareg.cbegin(), it);
 	float_ etatmp1 = *it;      
 	float_ etatmp2 = *(it+1);
 	std::string str1 = std::to_string(etatmp1).replace(1,1,"p").erase(5,10);
@@ -146,7 +169,6 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	float_ deltaE;
 	vec1d<float_> genen, geneta, recen;
 	for(uint_ j=0; j<ss; ++j) {
-	  //std::cout << j << ", " << x[0][idx].at(j)[2] << ", " << x[1][idx][j][2] << ", " << x[2][idx][j][2] << std::endl;
 	  /*The calibration should only be done for detectors that have particles that produced completely contained showers
 	    Calibrating individual subdetectors would then be a bad idea (see Sec.6.2.11 Calorimetry, Wigmans, 2nd ed.).
 	  */
@@ -163,15 +185,15 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	TMath::Quantiles(ss, nq+1, xq1, quantiles1, probs, kFALSE);
 
 	//relative calibration versus eta
-	std::string hn = idstr + "_" + this->samples + "_mask" + std::to_string(this->mask);
+	std::string hn = idstr + "_" + this->p.samples + "_mask" + std::to_string(this->p.mask);
 	TH2D* htmp1 = new TH2D(("resVSeta_"+hn).c_str(), ";|#eta|;#DeltaE/E", 
 			       nq, quantiles1, 250, -1, 3);
 	for(uint_ i=0; i<ss; ++i) {
 	  deltaE = (recen[i]/genen[i]) - 1.;
 	  htmp1->Fill(geneta[i], deltaE);
 	}
-	this->calib[0][idstr] = Calibration::calibrate_spectrum(htmp1, hstr, label+"(PU=0)",
-								"pol2", plot);
+	this->calib[0][idstr] = Calibration::calibrate_spectrum(htmp1, "SR" + std::to_string(ireg), 
+								p.label+"(PU=0)", "pol2", plot);
 	delete htmp1;
 
 	//relative calibration versus energy
@@ -182,11 +204,15 @@ void Calibration::pion_calibration(const int& nq, const bool& pu, const bool& pl
 	  deltaE = (recen[i]/genen[i]) - 1.;
 	  htmp2->Fill(recen[i], deltaE);
 	}
-	this->calib[1][idstr] = Calibration::calibrate_spectrum(htmp2, hstr, label+" (PU=0)",
-								"pol1", plot);
+	this->calib[1][idstr] = Calibration::calibrate_spectrum(htmp2, "SR" + std::to_string(ireg), 
+								p.label+" (PU=0)", "pol1", plot);
 	delete htmp2;
       }
+
+      //Needs further work.
+      compensation(ireg, flr, false, false);
     }
+  std::exit(0);
 }
 
 void Calibration::photon_calibration(const int& nq, const bool& pu, const bool& plot) 
@@ -197,14 +223,14 @@ void Calibration::photon_calibration(const int& nq, const bool& pu, const bool& 
       std::exit(0);
     }
 
-  for(uint_ ireg=1; ireg<=nreg; ++ireg) {      
+  for(uint_ ireg=1; ireg<=p.nreg; ++ireg) {      
     std::string hstr = "SR" + std::to_string(ireg);
-    vec3d<float_> x = Calibration::energies_for_calibration("data", ireg);
+    vec3d<float_> x = Calibration::values_for_calibration(this->p.noPUFile, "summary", 1, ireg);
     typename std::vector<float_>::const_iterator it;
 
     //loop over eta calibration regions
-    for(it=etareg.cbegin(); it!=(etareg.cend()-1); ++it) {
-      int_ idx = std::distance(etareg.cbegin(), it);
+    for(it=p.etareg.cbegin(); it!=(p.etareg.cend()-1); ++it) {
+      int_ idx = std::distance(p.etareg.cbegin(), it);
 
       float_ etatmp1 = *it;      
       float_ etatmp2 = *(it+1);
@@ -227,7 +253,7 @@ void Calibration::photon_calibration(const int& nq, const bool& pu, const bool& 
       TMath::Quantiles(ss, nq+1, xq1, quantiles1, probs, kFALSE);
 
       //relative calibration versus eta
-      std::string hn = idstr + "_" + this->samples + "_mask" + std::to_string(this->mask);
+      std::string hn = idstr + "_" + this->p.samples + "_mask" + std::to_string(this->p.mask);
       TH2D* htmp1 = new TH2D(("resVSeta_"+hn).c_str(), ";|#eta|;#DeltaE/E", 
 			     nq, quantiles1, 100, -1, 1);
       float_ genen, geneta, recen, deltaE;
@@ -238,8 +264,8 @@ void Calibration::photon_calibration(const int& nq, const bool& pu, const bool& 
 	deltaE = (recen/genen) - 1.;
 	htmp1->Fill(geneta, deltaE);
       }
-      this->calib[0][idstr] = Calibration::calibrate_spectrum(htmp1, hstr, label+"(PU=0)",
-							      "pol2", plot);
+      this->calib[0][idstr] = Calibration::calibrate_spectrum(htmp1, "SR" + std::to_string(ireg), 
+							      p.label+"(PU=0)", "pol2", plot);
       delete htmp1;
 
       //relative calibration versus energy
@@ -253,8 +279,8 @@ void Calibration::photon_calibration(const int& nq, const bool& pu, const bool& 
 	deltaE = (recen/genen) - 1.;
 	htmp2->Fill(recen, deltaE);
       }
-      this->calib[1][idstr] = Calibration::calibrate_spectrum(htmp2, hstr, label+" (PU=0)",
-							      "pol1", plot);
+      this->calib[1][idstr] = Calibration::calibrate_spectrum(htmp2, "SR" + std::to_string(ireg), 
+							      p.label+" (PU=0)", "pol1", plot);
       delete htmp2;
     }
   }
@@ -286,24 +312,27 @@ TF1* Calibration::calibrate_spectrum(TH2D* h, const std::string& title,
     tex.DrawLatex(0.15, 0.88, title.c_str());
     tex.SetTextAlign(31);
     tex.DrawLatex(0.97, 0.96, proc.c_str());
-    c.SaveAs( (this->outpath + h->GetName() + "_" + title + ".png").c_str() );
+    c.SaveAs( (this->p.outpath + h->GetName() + "_" + title + ".png").c_str() );
   }
 
   prof->Delete();
   return calibGr;
 }
 
-vec3d<float_> Calibration::energies_for_calibration(const std::string& tname, 
-						    const int& ireg) 
+vec3d<float_> Calibration::values_for_calibration(const std::string& fname, const std::string& tname, 
+						  const uint_&idet, const uint_& ireg, std::optional<vec1d<float_>> etas_opt) 
 {
+  vec1d<float_> etas;
+  etas = etas_opt.value_or(this->p.etareg);
+  
   vec3d<float_> x;
   //fill energies vector with 2d vectors, one per etaregion considered in the calibration
-  for(uint_ i=0; i<this->etareg.size()-1; ++i) {
+  for(uint_ i=0; i<etas.size()-1; ++i) {
     vec2d<float_> etareg_row;
     x.push_back(etareg_row);
   }
 
-  std::vector<float_> newetareg(this->etareg.cbegin(), this->etareg.cend());
+  std::vector<float_> newetareg(etas.cbegin(), etas.cend());
   auto fill_layer_energies = [&x, &newetareg](const float& gen, const float& geta, 
 					      const float& en, const float& noi) {
     bool_ region_check = false;
@@ -322,14 +351,114 @@ vec3d<float_> Calibration::energies_for_calibration(const std::string& tname,
   };
   auto cutmin = [](float_ var, float_ cut) {return var > cut;};
 
-  std::string mingenen_str = "static_cast<float>(" + std::to_string(mingenen) + ")";
+  std::string mingenen_str = "static_cast<float>(" + std::to_string(this->p.mingenen) + ")";
   uint_ ncores = std::thread::hardware_concurrency();
   ROOT::EnableImplicitMT(ncores);
-  ROOT::RDataFrame d(tname, noPUFile);
+  
+  ROOT::RDataFrame d(tname, fname);
   d.Define("abs_geneta", "fabs(geneta)")
     .Define("mingenen", mingenen_str)
     .Filter(cutmin, {"genen", "mingenen"})
     .Foreach(fill_layer_energies, {"genen", "abs_geneta",
-	  ("en_sr"+std::to_string(ireg)+"_ROI").c_str(), "noise_sr3_ROI"});
+	  ("en_sr"+std::to_string(ireg)+"_det"+std::to_string(idet)).c_str(), "noise_sr3_ROI"});
   return x;
 }
+
+/*Iterates over the hits, calibrates them, joins them form three subdetectors 
+  and returns (Cglob, E_reco) event by event*/
+vec3d<float_> Calibration::values_for_compensation(const vec1d<std::string>& tname, 
+						   const uint_& ireg) 
+{
+  vec3d<float_> x;
+  //fill energies vector with 2d vectors, one per energy region considered in the calibration
+  for(uint_ i=0; i<this->p.enreg.size()-1; ++i) {
+    vec2d<float_> enreg_row;
+    x.push_back(enreg_row);
+  }
+
+  auto cglob = [&](const float& gen, const float& en) {
+    typename std::vector<float_>::const_iterator it;
+    for(it=this->p.enreg.cbegin(); it!=(this->p.enreg.cend()-1); ++it) 
+      {
+	/*
+      fIn = TFile.Open(FLAGS.noPUFile, 'READ')
+	fOut = TFile(FLAGS.outpath, 'RECREATE')
+	output_tuples = []
+
+    for idet,subdet in enumerate(subdetectors):
+        if(idet==0):
+            NLAYERS = 28
+        else:
+            NLAYERS = 24
+        varnames  = ['genen', 'geneta', 'genphi']
+        for i in range(1,NREG+1):
+            varnames += ['en_sr{}_ROI'.format(i), 
+                         'noise_sr{}_ROI'.format(i)]
+            for il in range(1,NLAYERS+1):
+                varnames += ['en_sr{}_layer{}'.format(i,il), 
+                             'noise_sr{}_layer{}'.format(i,il)]
+        output_tuples.append(TNtuple(subdet,subdet,":".join(varnames)))
+        
+        tree = fIn.Get('an_mask/'+subdet)
+        #for i in range(t.GetEntriesFast()):
+        for t in tree:
+            #define the ROIs
+            roiList={}
+            for ir in range(0,t.ROIs.size()):
+                if t.ROIs[ir].id() < 0 and t.ROIs[ir].id() != -211: 
+                    continue
+                roiList[ir] = ROISummary(t.ROIs[ir].p4(), Nlayers=NLAYERS)
+	*/
+      }
+  };
+  auto cutmin = [](float_ var, float_ cut) {return var > cut;};
+
+  std::string mingenen_str = "static_cast<float>(" + std::to_string(this->p.mingenen) + ")";
+  uint_ ncores = std::thread::hardware_concurrency();
+  ROOT::EnableImplicitMT(ncores);
+  ROOT::RDataFrame d(tname[0], this->p.noPUFile_raw);
+  d.Define("mingenen", mingenen_str)
+    .Filter(cutmin, {"genen", "mingenen"})
+    .Foreach(cglob, {"genen", ("en_sr"+std::to_string(ireg)+"_ROI").c_str()});
+  return x;
+}
+
+/*
+vec3d<float_> Calibration::values_for_compensation(const std::string& tname, 
+						   const int& ireg) 
+{
+  vec3d<float_> x;
+  //fill energies vector with 2d vectors, one per energy region considered in the calibration
+  for(uint_ i=0; i<this->enreg.size()-1; ++i) {
+    vec2d<float_> enreg_row;
+    x.push_back(enreg_row);
+  }
+
+  std::vector<float_> newenreg(this->enreg.cbegin(), this->enreg.cend());
+  auto fill_layer_energies = [&x, &newenreg](const float& gen, const float& en, 
+					     const float& cglob) {
+    bool_ region_check = false;
+    typename std::vector<float_>::const_iterator it;
+    for(it = newenreg.cbegin(); newenreg.cend()-it>1; ++it) {
+      if(gen <= *it || gen > *(it+1))
+	continue; 
+      assert(!region_check);
+      region_check = true;
+
+      std::vector<float_> row = {gen, en}; 
+      int_ idx = it - newenreg.cbegin();
+      x.at(idx).push_back(row);
+    }
+  };
+  auto cutmin = [](float_ var, float_ cut) {return var > cut;};
+
+  std::string mingenen_str = "static_cast<float>(" + std::to_string(mingenen) + ")";
+  uint_ ncores = std::thread::hardware_concurrency();
+  ROOT::EnableImplicitMT(ncores);
+  ROOT::RDataFrame d(tname, noPUFile);
+  d.Define("mingenen", mingenen_str)
+    .Filter(cutmin, {"genen", "mingenen"})
+    .Foreach(fill_layer_energies, {"genen", ("en_sr"+std::to_string(ireg)+"_ROI").c_str()});
+  return x;
+}
+*/
