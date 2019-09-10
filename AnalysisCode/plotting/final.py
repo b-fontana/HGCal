@@ -1,111 +1,152 @@
 import sys
+import copy
 import numpy as np
 import pandas as pd
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 import seaborn as sns
 import params
 sns.set(style='ticks', font_scale=3)
-sns.despine()
 
-def diag_ticks(ax1,ax2):
-    d = .005  # how big to make the diagonal lines in axes coordinates
-    kwargs = dict(transform=ax1.transAxes, color='k', clip_on=False)
-    ax1.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
-    ax1.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
-    kwargs.update(transform=ax2.transAxes)  # switch to the bottom axes
-    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
-    ax2.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
-
-method, samples = sys.argv[1], sys.argv[2]
+figsize = (60.,30.)
+figscale = figsize[0] / figsize[1]
+method, samples, region = sys.argv[1], sys.argv[2], sys.argv[3]
 df = []
-bias, biaserr, ratio_bad, nsamples = ([] for _ in range(4))
+bias, biaserr, bad75, bad50, nsamples, quart_dist = ([] for _ in range(6))
 etavalues = params.etavalues(samples)
 etalabels = ['['+str(np.round(x,3))+';'+str(np.round(y,3))+'[' for x,y in zip(etavalues[:-1],np.roll(etavalues,-1)[:-1])]
+method_str = 'corr_fineeta' if method == 'fineeta' else 'corr_ed' if method == 'ed' else 'nocorr_ed'
 for imask in range(3,7):
-    with np.load('numpy_files/arrays_reg3_'+str(imask)+samples+'_'+method+'.npz') as f:
+    with np.load('numpy_files/arrays_reg'+str(region)+'_'+str(imask)+samples+'_'+method_str+'.npz') as f:
         df.append(pd.DataFrame(f['response_eta']).transpose())
         df[-1].columns = ['response', 'eta']
         df[-1] = df[-1][ (df[-1].response>=-1) & (df[-1].response<2.5) ]
         df[-1]['eta_cat'] = pd.cut(df[-1].eta, bins=etavalues, right=False, labels=[i for i in range(len(etavalues)-1)])
         df[-1]['mask'] = imask
-        bias.append(f['bias'])        
+        bias.append(f['bias']) 
         biaserr.append(f['biaserr'])        
-        ratio_bad.append(f['ratio_bad'])
-        nsamples.append(f['nsamples'])
+        nsamples.append(df[-1].groupby('eta_cat')['response'].count().to_numpy(dtype=np.float32))
+        badratio = lambda x: df[-1][df[-1].response<x].groupby('eta_cat')['response'].count().to_numpy()
+        bad75.append(badratio(-.75) / nsamples[-1])
+        bad50.append(badratio(-.50) / nsamples[-1])
+        quantiles = df[-1].groupby('eta_cat')['response'].quantile([.25,.75]).to_numpy()
+        quart_dist.append(np.abs(quantiles[0::2]-quantiles[1::2]))
 
 #join the datasets of the fours geometries (masks)
 df_tot = pd.concat([df[0],df[1],df[2],df[3]], axis=0, sort=False)
 
-fig, ax = plt.subplots(4, 1, figsize=(60,25), sharex=True,
-                       gridspec_kw={'height_ratios': [7,.3,.7,1]})
-
-ax[0].plot([-0.5, 40], [0, 0], linewidth=2, color='grey', linestyle='dashed')
-ax[2].plot([-0.5, 40], [0, 0], linewidth=2, color='grey', linestyle='dashed')
-if samples == 'outer':
-    ax[2].plot([-0.5, 40], [0.05, 0.05], linewidth=2, color='grey', linestyle='dashed')
+figratios = [1,.2]
+fig, ax = plt.subplots(len(figratios), 1, figsize=figsize, sharex=True,
+                       gridspec_kw={'height_ratios': figratios})
+axes = dict({'main':ax[0], 'ntot':ax[1]})
+axes['main'].plot([-0.5, 40], [0, 0], linewidth=2, color='grey', linestyle='dashed')
 
 #boxplot
-flierprops = dict(markerfacecolor='0.75', markersize=8,
+flierprops = dict(markerfacecolor='0.75', markersize=5*figscale,
                   linestyle='none')
-axsns = sns.boxplot(x='eta_cat', y='response', hue='mask', data=df_tot, whis=1.5, flierprops=flierprops, ax=ax[0])
+axsns = sns.boxplot(x='eta_cat', y='response', hue='mask', data=df_tot, whis=1.5, flierprops=flierprops, ax=axes['main'])
 for patch in axsns.artists:
     r, g, b, a = patch.get_facecolor()
     patch.set_facecolor((r,g,b,.5))
-plt.setp(ax[0].get_legend().get_texts(), fontsize='40')
-plt.setp(ax[0].get_legend().get_title(), fontsize='40')
+plt.setp(axes['main'].get_legend().get_texts(), fontsize=str(6*figscale))
 
 lin = (-0.3, len(etavalues)-2.3, len(etavalues)-1)
 colors = ['blue', 'orange', 'green', 'red']
+handles = []
 for imask in range(4):
-    ax[0].set_xticklabels([])
-    ax[1].set_xticklabels(etalabels)
+    axes['ntot'].set_xticklabels(etalabels)
     incr = imask*0.2
     imask2 = imask+3
-    ax[0].errorbar(np.linspace(lin[0]+incr, lin[1]+incr, lin[2]), 
-                   bias[imask], yerr=biaserr[imask], 
-                   color=colors[imask], linestyle='', 
-                   marker='o', markersize=12, capsize=8, label='fit '+str(imask2))
-    ax[0].legend()
-    ax[1].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
-             ratio_bad[imask], 
-             color=colors[imask], linestyle='', 
-             marker='s', markersize=14)
-    ax[2].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
-             ratio_bad[imask], 
-             color=colors[imask], linestyle='', 
-             marker='s', markersize=14)
+    axes['main'].errorbar(np.linspace(lin[0]+incr, lin[1]+incr, lin[2]), 
+                          bias[imask], yerr=biaserr[imask], 
+                          color=colors[imask], linestyle='', 
+                          marker='o', markersize=7*figscale, capsize=5*figscale, label='fit '+str(imask2))
 
-    ax[3].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
-               nsamples[imask], 
-               color=colors[imask], linestyle='', 
-               marker='s', markersize=14)
+    options = dict(color=colors[imask], linestyle='', 
+                   markersize=7*figscale, markeredgecolor='black', markeredgewidth=3)
+    axes['ntot'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                      nsamples[imask], marker='s', **options)
 
-ax[0].set_ylabel(r'Response: $(E_{reco}-E_{gen})/E_{gen}$',
-                 fontsize=38)
-ax[0].set_ylim([-1.1,2.5])
-
-ax[1].set_ylabel(r'$\frac{N_{\Delta E/E<-0.95}}{N_{total}}$',
-                 fontsize=42, labelpad=50)
-#ax[1].set_ylim([-0.05,0.2] if samples=='inner' else [-0.15,0.85])
-ax[1].set_yticks([1.] if samples=='inner' else [0.6])
-ax[1].grid()
-ax[1].set_ylim(0.95,1.05) if samples == 'inner' else  ax[1].set_ylim(0.45,0.75)
-ax[2].set_ylim(-0.2,0.4) if samples == 'inner' else  ax[2].set_ylim(-0.05,0.2)
-ax[2].set_yticks([0.,0.2] if samples=='inner' else [0.,0.15])
-ax[1].spines['bottom'].set_visible(False)
-ax[2].spines['top'].set_visible(False)
-ax[1].xaxis.tick_top()
-ax[1].tick_params(labeltop='off')  # don't put tick labels at the top
-ax[2].xaxis.tick_bottom()
-diag_ticks(ax[1],ax[2])
-
-ax[3].set_ylabel(r'$N_{total}$',
-                 fontsize=35)
-ax[3].set_xlabel(r'$|\eta|$', fontsize=38)
-ax[3].grid()
-#ax[3].set_yscale('log')
-ax[3].set_yticks([350,3500] if samples=='inner' else [200,20000])
+axes['main'].legend(loc='upper right' if samples=='outer' else 'upper left')
+axes['main'].set_ylabel(r'Response: $(E_{reco}-E_{gen})/E_{gen}$',
+                        fontsize=15*figscale)
+axes['main'].set_ylim([-1.1,2.5])
+axes['ntot'].set_ylabel(r'$N_{total}$', fontsize=15*figscale)
+axes['ntot'].set_xlabel(r'$|\eta|$', fontsize=15*figscale)
+axes['ntot'].grid(linewidth=3)
+axes['ntot'].set_yticks([350,2000,3000] if samples=='inner' else [200,10000,20000])
+axes['ntot'].set_ylim([0,3550] if samples=='inner' else [0,30000])
 
 plt.subplots_adjust(wspace=0., hspace=0.)
-plt.savefig('final_'+samples+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/final_'+samples+'.png')
+
+texth = 1.015
+plt.text(.0, texth, 'CMS Preliminary', ha='left', transform=axes['main'].transAxes)
+radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
+plt.text(.815, texth, 'Integration cylinder radius: '+radius[region], transform=axes['main'].transAxes)
+methodmap = dict({'ed':'Shower reconstruction', 'fineeta':'Brute force calibration', 'nocorr':'No Correction'})
+plt.text(.34, texth, 'Software correction method: '+methodmap[method], transform=axes['main'].transAxes)
+plt.savefig('figs/final_'+str(region)+'_'+samples+'_'+method+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/final_'+str(region)+'_'+samples+'_'+method+'.png')
+
+########################################################################
+########################################################################
+figratios = [.6,1]
+fig, ax = plt.subplots(len(figratios), 1, figsize=figsize, sharex=True,
+                       gridspec_kw={'height_ratios': figratios})
+axes = dict({'res':ax[0], 'bad':ax[1]})
+
+for imask in range(4):
+    axes['bad'].set_xticks([x for x in range(len(etavalues)-1)])
+    axes['bad'].set_xticklabels(etalabels)
+    for i in [x for x in np.linspace(1.5,12.5,len(etavalues)-2)-1]:
+        axes['bad'].plot([i, i], [0, 0.55], linewidth=2, color='grey', linestyle=(0, (5,10)))
+        axes['res'].plot([i, i], [0.05, 1.35], linewidth=2, color='grey', linestyle=(0, (5,10)))
+    incr = imask*0.2
+    imask2 = imask+3
+    options = dict(color=colors[imask], linestyle='', 
+                   markersize=10*figscale, markeredgecolor='black', markeredgewidth=3)
+    if(imask==0):
+        h, = axes['bad'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                              bad75[imask], label='$k=-0.75$', marker='s', **options)
+        handles.append(copy.copy(h))
+        h, = axes['bad'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                              bad50[imask], label='$k=-0.50$', marker='v', **options)
+        handles.append(copy.copy(h))
+    else:
+        axes['bad'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                         bad75[imask], marker='s', **options)
+        axes['bad'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                         bad50[imask], marker='v', **options)
+
+    axes['res'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
+                     quart_dist[imask], marker='s', label='mask '+str(imask2), **options)
+
+
+#manually change the color of the legend
+for h in handles:
+    h.set_color('black')
+axes['bad'].legend(handles=handles, fontsize=14*figscale)
+axes['bad'].set_ylabel(r'$\frac{N_{\Delta E/E<k}}{N_{total}}$',
+                 fontsize=25*figscale, labelpad=50)
+axes['bad'].set_yticks([0.,.1,.2,.3,.4,.5] if samples=='inner' else [0.,0.3,0.6])
+axes['bad'].set_ylim([-0.03,0.6] if samples=='inner' else [-0.03,0.95])
+axes['bad'].grid(linewidth=3)
+axes['bad'].set_xlabel(r'$|\eta|$', fontsize=18*figscale)
+
+axes['res'].set_ylim([-0.1,1.5] if samples=='inner' else [-0.1,1.5])
+axes['res'].set_ylabel(r'$|3^{\mathrm{rd}}\mathrm{Q}-1^{\mathrm{st}}\mathrm{Q}|$', fontsize=18*figscale, labelpad=50)
+axes['res'].grid(linewidth=3)
+axes['res'].legend(loc='upper right' if samples=='outer' else 'upper left')
+
+plt.subplots_adjust(wspace=0., hspace=0.)
+
+axes['res'].grid(axis='x')
+axes['bad'].grid(axis='x')
+texth = 1.04
+plt.text(.0, texth, 'CMS Preliminary', ha='left', transform=axes['res'].transAxes)
+radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
+plt.text(.815, texth, 'Integration cylinder radius: '+radius[region], transform=axes['res'].transAxes)
+methodmap = dict({'ed':'Shower reconstruction', 'fineeta':'Brute force calibration', 'nocorr':'No Correction'})
+plt.text(.34, texth, 'Software correction method: '+methodmap[method], transform=axes['res'].transAxes)
+plt.savefig('figs/final2_'+str(region)+'_'+samples+'_'+method+'.png')
+plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/final2_'+str(region)+'_'+samples+'_'+method+'.png')
