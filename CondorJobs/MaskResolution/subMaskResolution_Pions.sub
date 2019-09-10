@@ -1,0 +1,13 @@
+samples=central
+script_name=Mask$(MASK)_ResAna_$(samples)_Pions
+
+executable            = subMaskResolution_Pions.sh
+arguments 	      = $(Step) $(MASK) $(samples)
+universe	      = vanilla
+requirements          = (OpSysAndVer =?= "CentOS7")
+output                = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).out
+error                 = out/$(script_name).$(ClusterId).$(ProcId).$(Step).$(MASK).err
+log                   = log/$(script_name).$(ClusterId).log
+RequestCpus	      = 1
++JobFlavour = "testmatch"
+queue 15 MASK in (3,4,5,6)
