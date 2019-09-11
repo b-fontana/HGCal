@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include "ROOT/RDataFrame.hxx"
+#include "ROOT/RVec.hxx"
 #include "TGraph.h"
 #include "TGraphAsymmErrors.h"
 #include "TH1.h"
@@ -59,10 +60,10 @@ class Calibrator
 			  const std::string&, const bool_&);
   vec3d<float> get_values_for_calibration(const std::string&, const std::string&, const uint_&, const uint_&, 
 				      std::optional<vec1d<float_>> etas = std::nullopt);
-  vec3d<float> get_values_for_compensation(const vec1d<std::string>&, const uint_&);
+  vec3d<float> get_values_for_compensation(const std::string&, const uint_&, const float_&, const uint_& n_pions_per_event=2);
   vec1d< tup3<float_> > do_pions_linear_regression(vec4d<float_>, const uint_&);
   vec1d< tup3<float_> > do_pions_linear_regression_python(vec4d<float_>, const uint_&);
-  void do_pion_compensation(const int&, const vec1d<tup3<float_>>&, const bool&, const bool&);
+  void do_pion_compensation(const uint_&, const vec1d<tup3<float_>>&, const bool_&, const bool_&);
  
  public: 
   vec1d<mapstr<TF1*>> calibration_values; 

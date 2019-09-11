@@ -1,8 +1,10 @@
 mingenen,20
 etareg_inner,2.7,2.9,2
 etareg_central,1.7,2.3,2
-enreg_central,20,125,20
 etareg_outer,1.45,1.65,2
+enreg_inner,20,125,2
+enreg_central,20,125,2
+enreg_outer,20,125,2
 nreg,3
 label,SinglePion 
 input,../HGCalMaskResolutionAna/summaries/summary_
