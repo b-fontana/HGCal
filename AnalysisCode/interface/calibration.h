@@ -29,7 +29,7 @@ class CalibratorInputParameters
 {
  public:
   CalibratorInputParameters() {};
-  CalibratorInputParameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&);
+  CalibratorInputParameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&, const std::string&);
   //CalibratorInputParameters(CalibratorInputParameters&);
   void define_input_parameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&);
 
@@ -47,6 +47,7 @@ class CalibratorInputParameters
   vec1d<float_> bckgcuts;
   std::string label = "";
   std::string outpath = "";
+  std::string particle = "";
 };
 
 class Calibrator
@@ -54,13 +55,17 @@ class Calibrator
  private:
   CalibratorInputParameters p;
   vec1d<float_> etareg_shift;
-  
 
+  vec1d<float_> reconstruct_raw_shower_energy(const uint_& n_particles_per_event, const uint_& ireg,
+					      const ROOT::VecOps::RVec<float_>& hits_en,
+					      const ROOT::VecOps::RVec<float_>& hits_sr,
+					      const ROOT::VecOps::RVec<float_>& hits_roi_idx);
   TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, 
 			  const std::string&, const bool_&);
   vec3d<float> get_values_for_calibration(const std::string&, const std::string&, const uint_&, const uint_&, 
 				      std::optional<vec1d<float_>> etas = std::nullopt);
-  vec3d<float> get_values_for_compensation(const std::string&, const uint_&, const float_&, const uint_& n_pions_per_event=2);
+  vec3d<float> get_values_for_compensation(const std::string&, const uint_&, const vec1d< tup3<float_> >, 
+					   const float_&, const uint_& n_pions_per_event=2);
   vec1d< tup3<float_> > do_pions_linear_regression(vec4d<float_>, const uint_&);
   vec1d< tup3<float_> > do_pions_linear_regression_python(vec4d<float_>, const uint_&);
   void do_pion_compensation(const uint_&, const vec1d<tup3<float_>>&, const bool_&, const bool_&);

@@ -119,8 +119,7 @@ void Calibrator::do_pion_compensation(const uint_& ireg, const vec1d<tup3<float_
   for(auto it = energy_mip_limits.cbegin(); it != energy_mip_limits.cend(); ++it)
     {
       vec3d<float_> compvals;
-      std::cout << "CHECK" << *it << std::endl;
-      compvals = get_values_for_compensation("an_mask/CEE_HEF_HEB", ireg, *it);
+      compvals = get_values_for_compensation("an_mask/CEE_HEF_HEB", ireg, flr, *it);
       for(auto it2 = this->p.enreg.cbegin(); it2 != this->p.enreg.cend()-1; ++it2) 
 	{
 	  //int_ idx = std::distance(p.enreg.cbegin(), it2);
@@ -159,6 +158,11 @@ void Calibrator::create_pion_calibration_values(const int& nq, const bool& pu, c
       //obtain the factors from a 3d linear regression
       std::cout << "----------------------------" << std::endl;
       vec1d< tup3<float_> > flr = Calibrator::do_pions_linear_regression(x_regression, ireg);
+      if(flr.size() != 1)
+	{
+	  std::cout << "I am using more than one eta bin in the central region. Modifications are required when accessing flr.";
+	  std::exit(0);
+	}
       std::cout << "----------------------------" << std::endl;
 
       typename std::vector<float_>::const_iterator it;
@@ -184,8 +188,8 @@ void Calibrator::create_pion_calibration_values(const int& nq, const bool& pu, c
 	  //sum the reconstructed energy in the three subdetectors
 	  genen.push_back(x[0][idx][j][0]);
 	  geneta.push_back(x[0][idx][j][1]);
-	  recen.push_back( std::get<0>(flr[idx])*x[0][idx][j][2] + std::get<1>(flr[idx])*x[1][idx][j][2] 
-			   + std::get<2>(flr[idx])*x[2][idx][j][2] );
+	  recen.push_back( std::get<0>(flr[0])*x[0][idx][j][2] + std::get<1>(flr[0])*x[1][idx][j][2] 
+			   + std::get<2>(flr[0])*x[2][idx][j][2] );
 	  xq0[j] = static_cast<double_>(genen.at(j));
 	  xq1[j] = static_cast<double_>(geneta.at(j));
 	}
@@ -234,7 +238,7 @@ void Calibrator::create_photon_calibration_values(const int& nq, const bool& pu,
 
   for(uint_ ireg=1; ireg<=p.nreg; ++ireg) {      
     std::string hstr = "SR" + std::to_string(ireg);
-    vec3d<float_> x = Calibrator::get_values_for_calibration(this->p.noPUFile, "summary", 1, ireg);
+    vec3d<float_> x = Calibrator::get_values_for_calibration(this->p.noPUFile, "data", 1, ireg);
     typename std::vector<float_>::const_iterator it;
 
     //loop over eta calibration regions
@@ -253,10 +257,11 @@ void Calibrator::create_photon_calibration_values(const int& nq, const bool& pu,
       for(int_ j=0; j<nq+1; ++j)
 	probs[j] = static_cast<double_>(j)/nq;
  
-      for(uint_ j=0; j<ss; ++j) {
-	xq0[j] = static_cast<double_>(x[idx][j][2]); //reco energy quantiles
-	xq1[j] = static_cast<double_>(x[idx][j][1]); //gen eta quantiles
-      }
+      for(uint_ j=0; j<ss; ++j) 
+	{
+	  xq0[j] = static_cast<double_>(x[idx][j][2]); //reco energy quantiles
+	  xq1[j] = static_cast<double_>(x[idx][j][1]); //gen eta quantiles
+	}
       double quantiles0[nq+1], quantiles1[nq+1]; 
       TMath::Quantiles(ss, nq+1, xq0, quantiles0, probs, kFALSE);
       TMath::Quantiles(ss, nq+1, xq1, quantiles1, probs, kFALSE);
@@ -266,13 +271,14 @@ void Calibrator::create_photon_calibration_values(const int& nq, const bool& pu,
       TH2D* htmp1 = new TH2D(("resVSeta_"+hn).c_str(), ";|#eta|;#DeltaE/E", 
 			     nq, quantiles1, 100, -1, 1);
       float_ genen, geneta, recen, deltaE;
-      for(uint_ i=0; i<ss; ++i) {
-	genen = x[idx][i][0];
-	geneta = x[idx][i][1];
-	recen = x[idx][i][2];
-	deltaE = (recen/genen) - 1.;
-	htmp1->Fill(geneta, deltaE);
-      }
+      for(uint_ i=0; i<ss; ++i) 
+	{
+	  genen = x[idx][i][0];
+	  geneta = x[idx][i][1];
+	  recen = x[idx][i][2];
+	  deltaE = (recen/genen) - 1.;
+	  htmp1->Fill(geneta, deltaE);
+	}
       this->calibration_values[0][idstr] = Calibrator::calibrate_spectrum(htmp1, "SR" + std::to_string(ireg), 
 							      p.label+"(PU=0)", "pol2", draw_plot);
       delete htmp1;
@@ -280,14 +286,15 @@ void Calibrator::create_photon_calibration_values(const int& nq, const bool& pu,
       //relative calibration versus energy
       TH2D *htmp2 = new TH2D(("resVSen_"+hn).c_str(), ";Reco energy [GeV];#DeltaE/E", 
 			     nq, quantiles0, 100, -1, 1);
-      for(uint_ i=0; i<ss; ++i) {
-	genen = x[idx][i][0];
-	geneta = x[idx][i][1];
-	recen = x[idx][i][2];
-	recen /= (this->calibration_values[0][idstr]->Eval(geneta)+1.0);
-	deltaE = (recen/genen) - 1.;
-	htmp2->Fill(recen, deltaE);
-      }
+      for(uint_ i=0; i<ss; ++i) 
+	{
+	  genen = x[idx][i][0];
+	  geneta = x[idx][i][1];
+	  recen = x[idx][i][2];
+	  recen /= (this->calibration_values[0][idstr]->Eval(geneta)+1.0);
+	  deltaE = (recen/genen) - 1.;
+	  htmp2->Fill(recen, deltaE);
+	}
       this->calibration_values[1][idstr] = Calibrator::calibrate_spectrum(htmp2, "SR" + std::to_string(ireg), 
 							      p.label+" (PU=0)", "pol1", draw_plot);
       delete htmp2;
@@ -296,8 +303,8 @@ void Calibrator::create_photon_calibration_values(const int& nq, const bool& pu,
 }
 
 TF1* Calibrator::calibrate_spectrum(TH2D* h, const std::string& title, 
-				     const std::string& proc, const std::string& func, 
-				     const bool& draw_plot)
+				    const std::string& proc, const std::string& func, 
+				    const bool& draw_plot)
 {
   TGraphAsymmErrors* prof = build_median_profile(h);
   prof->Fit(func.c_str());
@@ -341,8 +348,9 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
   }
 
   vec1d<float_> newetareg(etas.cbegin(), etas.cend());
-  auto fill_layer_energies = [&x, &newetareg](const float& gen, const float& geta, 
-					      const float& en, const float& noi) {
+  std::mutex mut;
+  auto fill_layer_energies = [&x, &newetareg, &mut](const float& gen, const float& geta, 
+						    const float& en, const float& noi) {
     bool_ region_check = false;
     typename std::vector<float_>::const_iterator it;
     for(it = newetareg.cbegin(); newetareg.cend()-it>1; ++it) {
@@ -354,108 +362,176 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
 
       vec1d<float_> row = {gen, geta, en, noi}; 
       int_ idx = it - newetareg.cbegin();
-      x.at(idx).push_back(row); //this line is not thread-safe, but it somehow works
+      { //mutex lock scope
+	std::lock_guard lock(mut); 
+	x.at(idx).push_back(row);
+      }
     }
   };
   auto cutmin = [](float_ var, float_ cut) {return var > cut;};
 
   std::string mingenen_str = "static_cast<float>(" + std::to_string(this->p.mingenen) + ")";
   uint_ ncores = std::thread::hardware_concurrency();
+  std::string enstrweird;
+  if(p.particle == "Pion")
+    enstrweird = "en_sr"+std::to_string(ireg)+"_det"+std::to_string(idet);
+  else
+    enstrweird = "en_sr"+std::to_string(ireg)+"_ROI";
   ROOT::EnableImplicitMT(ncores);
   ROOT::RDataFrame d(tname, fname);
   d.Define("abs_geneta", "fabs(geneta)")
     .Define("mingenen", mingenen_str)
     .Filter(cutmin, {"genen", "mingenen"})
     .Foreach(fill_layer_energies, {"genen", "abs_geneta",
-	  ("en_sr"+std::to_string(ireg)+"_det"+std::to_string(idet)).c_str(), "noise_sr3_ROI"});
+	  enstrweird.c_str(), "noise_sr3_ROI"});
   return x;
 }
 
 /*Iterates over the hits, calibrates them, joins them form three subdetectors 
   and returns (Cglob, E_reco) event by event*/
 vec3d<float_> Calibrator::get_values_for_compensation(const std::string& tname, const uint_& ireg, 
+						      const vec1d< tup3<float_> > flr,
 						      const float_& energy_mip_limit, const uint_& n_pions_per_event) 
 {
-  /*Dont forget to calibrate the energy!!!!!!!!!!!!!*/
+  /*
+  size_t n = p.etareg.size();
+  auto convert_str = [](const float_& etatmp)
+    {
+      return std::to_string(etatmp).replace(1,1,"p").erase(5,10);
+    };
+  */
+
   vec3d<float_> values;
-  std::cout << "ENTER: " << this->p.enreg.size()-1 << std::endl;
-  //values.clear();
-  //fill energies vector with 2d vectors, one per energy region considered in the calibration
+  //fill vector with 2d vectors, one per energy region considered in the calibration
   for(uint_ i=0; i<this->p.enreg.size()-1; ++i) {
     vec2d<float_> enreg_row;
     values.push_back(enreg_row);
   }
   std::mutex mut;
-  auto calculate_cglob = [&](const float& gen, const float& geta, const ROOT::VecOps::RVec<float_>& hits_en,
-			     const ROOT::VecOps::RVec<int_>& hits_sr, const ROOT::VecOps::RVec<int_>& hits_roi_idx) {
-    bool_ region_check = false;
-    typename std::vector<float_>::const_iterator it;
-    for(it = this->p.enreg.cbegin(); it != this->p.enreg.cend()-1; ++it) 
-      {
-	if(gen <= *it || gen > *(it+1))
-	  continue; 
-	assert(!region_check);
-	region_check = true;
 
-	vec1d<int_> n_under_mean(n_pions_per_event, 0);
-	vec1d<int_> n_under_limit(n_pions_per_event, 0);
-	vec1d<float_> mean(n_pions_per_event, 0.);
-	vec1d<int_> count(n_pions_per_event, 0);
+  auto calculate_cglob = [&, this](const float& gen, const float& geta, 
+				   const ROOT::VecOps::RVec<float_>& hits_en, const ROOT::VecOps::RVec<int_>& hits_subdet,
+				   const ROOT::VecOps::RVec<int_>& hits_sr, const ROOT::VecOps::RVec<int_>& hits_roi_idx) 
+    {
+      vec1d<float_> raw_recen = this->reconstruct_raw_shower_energy(n_pions_per_event, ireg, hits_en, hits_sr, hits_roi_idx);
+      //this->calibrate_shower()
+      //this->calculate_cglob()
 
-	//calculation of the average RecHit energy in all the regions of interest
+      /*
+      typename std::vector<float_>::const_iterator it;
+      for(it = this->p.etareg.cbegin(); it != this->p.etareg.cend()-1; ++it) {
+	std::string idstr;
+	if (geta < this->p.etareg[0] or geta > this->p.etareg[n-1]) 
+	  {
+	    idstr = "sr" + std::to_string(ireg) + "from" + convert_str(p.etareg[0]) + "to" + convert_str(p.etareg[n-1]);
+	  }
+	else if (geta < *it or geta > *(it+1))
+	  continue;
+	else 
+	  {
+	    idstr = "sr" + std::to_string(ireg) + "from" + convert_str(*it) + "to" + convert_str(*(it+1));
+	  }
+
+	//it should only get here once per event
+	float_ f1 = 1., f2 = 0.;
+	f1 /= calibration_values[0][idstr]->Eval(geta)+1.0;
+	f1 /= calibration_values[1][idstr]->Eval(f1*en[ireg-1])+1.0;
+	if (calibration_values[2].size() > 0)
+	  f2 = calibration_values[2][idstr]->Eval(noi[2]);
+
+	//all hits are being calibrated, including the noise      
+	ROOT::VecOps::RVec<float_> hits_en_calib(hits_en.size(), 0.);
 	typename ROOT::VecOps::RVec<float_>::const_iterator it_hiten;
 	for(it_hiten = hits_en.cbegin(); it_hiten != hits_en.cend(); ++it_hiten)
 	  {
-	    uint_ idx1 = std::distance(hits_en.cbegin(), it_hiten);
-	    for(uint_ iev=0; iev<n_pions_per_event; ++iev)
+	    int_ idx = std::distance(hits_en.cbegin(), it_hiten);
+	    for(uint_ idet=0; idet<this->p.nsubdets; ++idet)
 	      {
-		if(hits_sr.at(idx1) <= static_cast<int_>(ireg) and hits_roi_idx.at(idx1) == static_cast<int_>(iev))
+		if(hits_subdet[idx] == idet)
 		  {
-		    mean.at(iev) += *it_hiten;
-		    count.at(iev) += 1;
+		    const uint_ idet_const = idet;
+		    hits_en_calib[idx] = f1*std::get<idet_const>(flr[0])*hits_en[idx] - f2;
 		  }
 	      }
-	  }
-	for(uint_ iev=0; iev<n_pions_per_event; ++iev)
-	  {
-	    if(count.at(iev) < 2)
-	      mean.at(iev) = -1;
-	    else
-	      mean.at(iev) /= static_cast<float_>(count.at(iev));
-	  }
-
-	//calculation of the Cglob factor for all regions of interest
-	typename ROOT::VecOps::RVec<float_>::const_iterator it2_hiten;
-	for(it2_hiten = hits_en.cbegin(); it2_hiten != hits_en.cend(); ++it2_hiten)
-	  {
-	    uint_ idx2 = std::distance(hits_en.cbegin(), it2_hiten);
-	    for(uint_ iev=0; iev<n_pions_per_event; ++iev)
-	      {
-		if(hits_sr.at(idx2) <= static_cast<int_>(ireg) and hits_roi_idx.at(idx2) == static_cast<int_>(iev))
-		  {
-		    if(*it2_hiten <= mean[iev])
-		      n_under_mean.at(iev) += 1;
-		    if(*it2_hiten <= energy_mip_limit)
-		      n_under_limit.at(iev) += 1;
-		  }
-	      }
-	  }
-	vec1d<float_> cglob(n_pions_per_event, 0.);
-	int_ idx = std::distance(this->p.enreg.cbegin(), it);
-	for(uint_ iev=0; iev<n_pions_per_event; ++iev)
-	  {
-	    if(mean.at(iev) == -1) //there was 1 hits or none for this region of interest inside the specified signal region
-	      continue;
-	    cglob.at(iev) = static_cast<float_>(n_under_limit.at(iev)) / n_under_mean.at(iev);
-	    vec1d<float_> row = {gen, geta, cglob.at(iev)};
-	    {//mutex lock scope
-	      std::lock_guard lock(mut); 
-	      values.at(idx).push_back(row);
-	    }
 	  }
       }
-  };
-  auto cutmin = [](float_ var, float_ cut) {return var > cut;};
+      */
+
+      /*Third part: Cglob calculation*/
+      /*
+      bool_ region_check = false;
+      typename std::vector<float_>::const_iterator it;
+      for(it = this->p.enreg.cbegin(); it != this->p.enreg.cend()-1; ++it) 
+	{
+	  if(gen <= *it || gen > *(it+1))
+	    continue; 
+	  assert(!region_check);
+	  region_check = true;
+
+	  vec1d<int_> n_under_mean(n_pions_per_event, 0);
+	  vec1d<int_> n_under_limit(n_pions_per_event, 0);
+	  vec1d<float_> mean(n_pions_per_event, 0.);
+	  vec1d<int_> count(n_pions_per_event, 0);
+
+	  //calculation of the average RecHit energy in all the regions of interest
+	  typename ROOT::VecOps::RVec<float_>::const_iterator it_hiten;
+	  for(it_hiten = hits_en_calib.cbegin(); it_hiten != hits_en_calib.cend(); ++it_hiten)
+	    {
+	      uint_ idx1 = std::distance(hits_en_calib.cbegin(), it_hiten);
+	      for(uint_ iev=0; iev<n_pions_per_event; ++iev)
+		{
+		  if(hits_sr.at(idx1) <= static_cast<int_>(ireg) and hits_roi_idx.at(idx1) == static_cast<int_>(iev))
+		    {
+		      mean.at(iev) += *it_hiten;
+		      count.at(iev) += 1;
+		    }
+		}
+	    }
+	  for(uint_ iev=0; iev<n_pions_per_event; ++iev)
+	    {
+	      if(count.at(iev) < 2)
+		mean.at(iev) = -1;
+	      else
+		mean.at(iev) /= static_cast<float_>(count.at(iev));
+	    }
+
+	  //calculation of the Cglob factor for all regions of interest
+	  typename ROOT::VecOps::RVec<float_>::const_iterator it2_hiten;
+	  for(it2_hiten = hits_en_calib.cbegin(); it2_hiten != hits_en_calib.cend(); ++it2_hiten)
+	    {
+	      uint_ idx2 = std::distance(hits_en_calib.cbegin(), it2_hiten);
+	      for(uint_ iev=0; iev<n_pions_per_event; ++iev)
+		{
+		  if(hits_sr.at(idx2) <= static_cast<int_>(ireg) and hits_roi_idx.at(idx2) == static_cast<int_>(iev))
+		    {
+		      if(*it2_hiten <= mean[iev])
+			n_under_mean.at(iev) += 1;
+		      if(*it2_hiten <= energy_mip_limit)
+			n_under_limit.at(iev) += 1;
+		    }
+		}
+	    }
+	  vec1d<float_> cglob(n_pions_per_event, 0.);
+	  int_ idx = std::distance(this->p.enreg.cbegin(), it);
+	  for(uint_ iev=0; iev<n_pions_per_event; ++iev)
+	    {
+	      if(mean.at(iev) == -1) //there was 1 hits or none for this region of interest inside the specified signal region
+		continue;
+	      cglob.at(iev) = static_cast<float_>(n_under_limit.at(iev)) / n_under_mean.at(iev);
+	      vec1d<float_> row = {gen, geta, recen[iev], cglob.at(iev)};
+	      { //mutex lock scope
+		std::lock_guard lock(mut); 
+		values.at(idx).push_back(row);
+	      }
+	    }
+	}
+      */
+    };
+
+  auto cutmin = [](float_ var, float_ cut) 
+    {
+      return var > cut;
+    };
 
   uint_ ncores = std::thread::hardware_concurrency();
   ROOT::EnableImplicitMT(ncores);
@@ -467,14 +543,32 @@ vec3d<float_> Calibrator::get_values_for_compensation(const std::string& tname, 
     .Define("genen", genen_str)
     .Define("abs_geneta", abseta_str)
     .Filter(cutmin, {"genen", "mingenen"})
-    .Foreach(calculate_cglob, {"genen", "abs_geneta", "Hits.en_mip_", "Hits.signalRegion_", "Hits.assocROIidx_"});
-
+    .Foreach(calculate_cglob, {"genen", "abs_geneta", "Hits.en_mip_", "Hits.subdet_", "Hits.signalRegion_", "Hits.assocROIidx_"});
   std::cout << "END" << n_pions_per_event << std::endl;
   return values;
 }
 
+vec1d<float_> Calibrator::reconstruct_raw_shower_energy(const uint_& n_particles_per_event, const uint_& ireg,
+							const ROOT::VecOps::RVec<float_>& hits_en,
+							const ROOT::VecOps::RVec<float_>& hits_sr,
+							const ROOT::VecOps::RVec<float_>& hits_roi_idx)
+{
+  vec1d<float_> raw_recen(n_particles_per_event, 0.);
+  typename ROOT::VecOps::RVec<float_>::const_iterator it_hiten;
+  for(it_hiten = hits_en.cbegin(); it_hiten != hits_en.cend(); ++it_hiten)
+    {
+      uint_ idx1 = std::distance(hits_en.cbegin(), it_hiten);
+      for(uint_ iev=0; iev<n_particles_per_event; ++iev)
+	{
+	  if(hits_sr.at(idx1) <= static_cast<int_>(ireg) and hits_roi_idx.at(idx1) == static_cast<int_>(iev))
+	    raw_recen[iev] += *it_hiten;
+	}
+    }
+  return raw_recen;
+}
+
 CalibratorInputParameters::CalibratorInputParameters(const std::string& fname, const vec1d<std::string>& varnames, 
-						     const std::string& mask, const std::string& samples)
+						     const std::string& mask, const std::string& samples, const std::string& particle)
 {
   if(std::stoi(mask) > 6 || std::stoi(mask) < 3)
     {
@@ -488,6 +582,15 @@ CalibratorInputParameters::CalibratorInputParameters(const std::string& fname, c
     }
   this->samples = samples;
   this->mask = std::stoi(mask);
+  if(fname.find("photon") != std::string::npos)
+    this->particle = "Photon";
+  else if(fname.find("pion") != std::string::npos)
+    this->particle = "Pion";
+  else
+    {
+      std::cout << "The configuration file must refer to photons or pions!" << std::endl;
+      std::exit(0);
+    }
   CalibratorInputParameters::define_input_parameters(fname, varnames, mask, samples);
 }
 
@@ -532,17 +635,17 @@ void CalibratorInputParameters::define_input_parameters(const std::string& fname
       else if(row[0] == "input") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
-	  this->noPUFile = row[1]+"mask"+mask+"_"+samples+"_Pions.root";
+	  this->noPUFile = row[1]+"mask"+mask+"_"+samples+"_"+particle+"s.root";
 	}
       else if(row[0] == "input_raw") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
-	  this->noPUFile_raw = row[1]+"/Pions/mask"+mask+"_"+samples+"/hadd_mask"+mask+"_"+samples+"_nopu.root";
+	  this->noPUFile_raw = row[1]+"/"+particle+"s/mask"+mask+"_"+samples+"/hadd_mask"+mask+"_"+samples+"_nopu.root";
 	}
       else if(row[0] == "output") 
 	{
 	  if( row.size()!=2 ) {row.bad_row();}
-	  this->outpath = row[1]+samples+"/mask"+mask+"_Pions";
+	  this->outpath = row[1]+samples+"/mask"+mask+"_"+particle+"s";
 	}
       else if(row[0] == "bckgcuts_"+samples) 
 	{
