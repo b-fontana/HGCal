@@ -28,7 +28,7 @@ int_ diff_ed(const vec1d<float_>& curr, const vec1d<float_>& standard,
   return -1;
 }
 
-SoftwareCorrection::SoftwareCorrection(std::string fname) {
+SoftwareCorrector::SoftwareCorrector(std::string fname) {
   wn = {{"weight1_sr1", "weight2_sr1", "weight3_sr1"},
 	{"weight1_sr2", "weight2_sr2", "weight3_sr2"},
 	{"weight1_sr3", "weight2_sr3", "weight3_sr3"}};
@@ -46,12 +46,12 @@ SoftwareCorrection::SoftwareCorrection(std::string fname) {
   }
 }
 
-SoftwareCorrection::~SoftwareCorrection() {
+SoftwareCorrector::~SoftwareCorrector() {
   fw->Close();
   delete fw;
 }
 
-vec1d<TGraph*> SoftwareCorrection::build_weights_graphs(int_ region) {
+vec1d<TGraph*> SoftwareCorrector::build_weights_graphs(int_ region) {
   vec1d<TGraph*> g;
   for(int_ il=0; il<nlayers; ++il) {
     g[il] = new TGraph(discrvals.size());
@@ -64,7 +64,7 @@ vec1d<TGraph*> SoftwareCorrection::build_weights_graphs(int_ region) {
   return g;
 }
 
-vec1d<float_> SoftwareCorrection::low_stats_factor(vec1d<uint_> limits, std::string mode) {
+vec1d<float_> SoftwareCorrector::low_stats_factor(vec1d<uint_> limits, std::string mode) {
   vec1d<float_> f(nreg, 1.);
   TH1F* h;
   for(int_ ireg=0; ireg<nreg; ++ireg) {

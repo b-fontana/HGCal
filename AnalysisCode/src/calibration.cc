@@ -567,8 +567,13 @@ vec1d<float_> Calibrator::reconstruct_raw_shower_energy(const uint_& n_particles
   return raw_recen;
 }
 
+/*The input parameters are obtained from a CSV file where each row specifies the values of the parameter.
+The parameter name is always the first item in each row.
+The name of the file has to contain one of the following subtrings: 'photon' or 'pion'.
+*/
 CalibratorInputParameters::CalibratorInputParameters(const std::string& fname, const vec1d<std::string>& varnames, 
-						     const std::string& mask, const std::string& samples, const std::string& particle)
+						     const std::string& mask, const std::string& samples, const std::string& method, 
+						     const std::string& particle)
 {
   if(std::stoi(mask) > 6 || std::stoi(mask) < 3)
     {
@@ -582,6 +587,7 @@ CalibratorInputParameters::CalibratorInputParameters(const std::string& fname, c
     }
   this->samples = samples;
   this->mask = std::stoi(mask);
+  this->method = method;
   if(fname.find("photon") != std::string::npos)
     this->particle = "Photon";
   else if(fname.find("pion") != std::string::npos)

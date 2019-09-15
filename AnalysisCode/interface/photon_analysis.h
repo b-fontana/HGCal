@@ -11,14 +11,13 @@
 #include "UserCode/AnalysisCode/interface/calibration.h"
 #include "UserCode/AnalysisCode/interface/utils.h"
 #include "UserCode/AnalysisCode/interface/types.h"
+#include "UserCode/AnalysisCode/interface/software_correction.h"
 #include "UserCode/AnalysisCode/interface/parser.h"
 
 class PhotonsPartialWafersAnalysis
 {
  public:
   PhotonsPartialWafersAnalysis(std::string mask, std::string samples, std::string method);
-  vec1d<mapstr<TF1*>> calibration_values;
-  void create_photon_calibration_values(const int&, const bool_&, const bool_&);
   CalibratorInputParameters get_input_parameters();  
 
   //functions to pass to RDataFrame methods
@@ -29,6 +28,13 @@ class PhotonsPartialWafersAnalysis
   std::function<bool_(const float_&, const vec1d<float_>&)> complete_showers_filter();
   std::function<vec2d<float_>(const vec2d<float_>&, const vec1d<float_>&, 
 			      const vec1d<float_>&, const vec1d<float_>&)> complete_showers_energy_profile();
+  std::function<vec1d<int_>(const vec1d<float_>&, const vec2d<float_>&, const vec2d<float_>&)> define_shower_index(const vec2d<float_>&); 
+  std::function<vec2d<float_>(const vec1d<float_>&, const vec2d<float_>&)> define_shower_energy_profile(); 
+  std::function<vec1d<float_>(const vec1d<float_>&, const vec2d<float_>&, const vec1d<int_>&)> calculate_weight_corrected_energy(SoftwareCorrector&);
+  std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> calculate_response();
+  std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<int_>&)> apply_low_stats_factor(SoftwareCorrector&);
+
+
   std::string define_en = 
     "std::vector<float> en = {en_sr1_ROI, en_sr2_ROI, en_sr3_ROI};"
     "return en;";
@@ -58,9 +64,18 @@ class PhotonsPartialWafersAnalysis
     "return en_layer;";
 
  private:
+  void do_photon_calibration(const int&, const bool_&, const bool_&);
+
   size_t netas;
+  vec1d<mapstr<TF1*>> calibration_values;
   std::unique_ptr<CalibratorInputParameters> params;
   std::unique_ptr<Calibrator> calibrator;
+
+  //software correction
+  vec1d<uint_> boundaries;
+  vec1d<float_> lshift;
+  std::string corr_mode;
+
 };
 
 #endif //PHOTON_ANALYSIS_H

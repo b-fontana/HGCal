@@ -13,7 +13,7 @@
 
 int_ diff_ed(const vec1d<float_>&, const vec1d<float_>&, const vec1d<float_>&, const float_&);
 
-class SoftwareCorrection {
+class SoftwareCorrector {
  private:
   int_ nlayers = 28;
   int_ nreg = 3;
@@ -29,9 +29,9 @@ class SoftwareCorrection {
       static_cast<size_t>(bckgcuts.size()),
       static_cast<size_t>(nlayers)};
 
-  SoftwareCorrection()=default;
-  SoftwareCorrection(std::string);
-  ~SoftwareCorrection();
+  SoftwareCorrector()=default;
+  SoftwareCorrector(std::string);
+  ~SoftwareCorrector();
   vec1d<TGraph*> build_weights_graphs(int_);
   vec1d<float_> low_stats_factor(vec1d<uint_>, std::string);
 };

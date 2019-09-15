@@ -31,7 +31,7 @@ int_ main(int_ argc, char_ **argv)
   //Calibration  
   vec1d<std::string> varnames = {"mingenen", "etareg_"+std::string(argv[4]), "etareg_central", "enreg_"+std::string(argv[4]),
 				 "nreg", "input", "input_raw", "output"};
-  CalibratorInputParameters p("params_pions.csv", varnames, std::string(argv[2]), std::string(argv[4]));
+  CalibratorInputParameters p("params_pions.csv", varnames, std::string(argv[2]), std::string(argv[4]), "", "Pion");
   Calibrator calibrator(p);
   calibrator.create_pion_calibration_values(6, false, true);
   //vec1d<mapstr<TF1*>> calib = calibrator.calibration_values;

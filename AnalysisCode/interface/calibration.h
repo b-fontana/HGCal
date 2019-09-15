@@ -29,8 +29,7 @@ class CalibratorInputParameters
 {
  public:
   CalibratorInputParameters() {};
-  CalibratorInputParameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&, const std::string&);
-  //CalibratorInputParameters(CalibratorInputParameters&);
+  CalibratorInputParameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&, const std::string&, const std::string&);
   void define_input_parameters(const std::string&, const vec1d<std::string>&, const std::string&, const std::string&);
 
   float_ mingenen = 20.;
@@ -47,6 +46,7 @@ class CalibratorInputParameters
   vec1d<float_> bckgcuts;
   std::string label = "";
   std::string outpath = "";
+  std::string method = "";
   std::string particle = "";
 };
 
