@@ -16,16 +16,17 @@ correction = sys.argv[4]
 file = up.open('root_files/final_'+str(mask)+samples+'_'+method+'.root')
 #trees = file.allkeys(filterclass=lambda x: issubclass(x, up.tree.TTreeMethods))
 tree = file["data"]
-geneta = tree.array('geneta')
+geneta = tree.array('abs_geneta')
 deltaE_array, deltaEcorr_array = tree.array('deltaE'), tree.array('deltaE_corr')
 
 ###############################################################################
 ###############################################################################
 width, height = 3, 3
-fitcut = 100.5
+fitcut = 2.
 fig_proj, ax_proj = [[] for _ in range(nreg)], [[] for _ in range(nreg)]
 for i in range(nreg):
-    fig_proj[i], ax_proj[i] = plt.subplots(4, 5, figsize=(25,15))
+    fig_proj[i], ax_proj[i] = plt.subplots(3, 5, figsize=(25,15),
+                                           sharex=True, sharey=False, squeeze=False)
 fig, ax = plt.subplots(height, width, figsize=(15,12), 
                        squeeze=False)
 fig.add_subplot(111, frameon=False)
@@ -50,7 +51,6 @@ for iax2 in range(width):
 
     xy = np.array([np.array(deltaE_), np.array(geneta)])
     it = 0
-    
     for ix1,ix2 in zip(xedges[:-1],np.roll(xedges,-1)[:-1]):
         tmp = xy[0][(xy[1]>=ix1) & (xy[1]<ix2)]
         rms[it] = np.sqrt(sum(tmp**2)/len(tmp))
@@ -66,33 +66,66 @@ for iax2 in range(width):
         mean = h_cut.dot(ycenters_cut)/sum(h_cut)
         sigma = h_cut.dot(ycenters_cut**2)/sum(h_cut) - mean**2
         ax_proj[iax2][int(np.floor(ibin/5)),int(ibin%5)].plot(ycenters_cut, h_cut, label=str(ibin)+', reg'+str(iax2+1))
-        try:
-            popt, pcov = curve_fit(gaus, ycenters_cut, h_cut, p0=[150,mean,sigma/2.],
-                                   bounds=([0.,-np.inf,0.], np.inf))
-            if abs(popt[1]) > .8 or popt[2]>2.:
-                raise RuntimeError()
-            elif abs(popt[1]) > .4 or popt[2]>.7 or nsamples[ibin]<10 or len(ycenters[ycenters<-0.95]) > 0.9*len(ycenters):
-                #the last conditions select situations where more than 90% of the data points lie close to resolution=-1
-                bias[ibin] = median[ibin]
-                biaserr[ibin] = 1.253*stddev[ibin]/np.sqrt(nsamples[ibin])
-            else:
-                bias[ibin] = popt[1]
-                biaserr[ibin] = np.sqrt(np.diag(pcov)[1])
-                ax_proj[iax2][int(np.floor(ibin/5)),int(ibin%5)].plot(ycenters_cut, gaus(ycenters_cut,*popt), color='red') 
-        except (RuntimeError, OptimizeWarning):
-            try:
-                popt, pcov = curve_fit(gaus, ycenters_cut, h_cut, p0=[150,mean,sigma/4.], maxfev=10000,
-                                       bounds=([0.,-np.inf,0.], np.inf))
-                if abs(popt[1]) > .4 or popt[2]>.7 or nsamples[ibin]<10 or len(ycenters[ycenters<-0.95]) > 0.9*len(ycenters):
+
+        if nsamples[ibin]<10 or len(ycenters[ycenters<-0.95]) > 0.9*len(ycenters):
+            #the last conditions select situations where more than 90% of the data points lie close to resolution=-1
+            bias[ibin] = median[ibin]
+            biaserr[ibin] = 1.253*stddev[ibin]/np.sqrt(nsamples[ibin])            
+        else:
+            if len(ycenters[ycenters<-0.95]) > 0.4*len(ycenters):
+                h_cut = h_cut[h_cut>-0.95]
+            remove_values = [-.95, -.9, -.85, -.8, -.75, -.7]
+            ntries, ntrieslimit = 0, 20
+            nremovals = 0
+            qualdiff = .1
+            previous_quality = np.inf
+            bad_fit = True
+            while bad_fit:
+                popt, pcov = curve_fit(gaus, ycenters_cut, h_cut, 
+                                       p0=[150,mean,sigma/2.], bounds=([0.,-abs(1.5*mean),0.], [np.inf, abs(1.5*mean), 2*sigma]), 
+                                       maxfev=10000)
+                ntries += 1
+                if ntries > ntrieslimit:
                     bias[ibin] = median[ibin]
                     biaserr[ibin] = 1.253*stddev[ibin]/np.sqrt(nsamples[ibin])
+                    bad_fit = False
+                    print("end")
+                    continue
+
+                if abs(popt[1]) > .4 or popt[2]>1.:
+                    bad_fit = True
+                    continue
                 else:
+                    curr_quality = sum((gaus(ycenters_cut, *popt) - h_cut)**2)
+                    print curr_quality,
+                    if previous_quality - curr_quality > qualdiff:
+                        previous_quality = curr_quality
+                        mean = popt[1]
+                        sigma = popt[2]
+                        bad_fit = True
+                        continue
+                    else:
+                        nremovals += 1
+                        h_cut = h_cut[h_cut>remove_values[nremovals]]
+                        popt, pcov = curve_fit(gaus, ycenters_cut, h_cut, 
+                                               p0=[150,mean,sigma/2.], bounds=([0.,-abs(2*mean),0.], [np.inf, abs(2*mean), 2*sigma]), 
+                                               maxfev=5000)
+                        curr_quality = sum((gaus(ycenters_cut, *popt) - h_cut)**2)
+                        if previous_quality - curr_quality > qualdiff and nremovals<len(remove_values):
+                            previous_quality = curr_quality
+                            mean = popt[1]
+                            sigma = popt[2]
+                            bad_fit = True
+                            continue
+
+                    bad_fit = False
+                    print("end")
                     bias[ibin] = popt[1]
                     biaserr[ibin] = np.sqrt(np.diag(pcov)[1])
-                    ax_proj[iax2][int(np.floor(ibin/5)),int(ibin%5)].plot(ycenters_cut, gaus(ycenters_cut,*popt), color='orange') 
-            except (RuntimeError, OptimizeWarning):
-                bias[ibin] = median[ibin]
-                biaserr[ibin] = 1.253*stddev[ibin]/np.sqrt(nsamples[ibin])
+                    curr_axis = ax_proj[iax2][int(np.floor(ibin/5)),int(ibin%5)]
+                    curr_axis.text(.01, 1.02, '#Iterations / Maximum: '+str(ntries)+' / '+str(ntrieslimit), transform=curr_axis.transAxes)
+                    curr_axis.plot(ycenters_cut, gaus(ycenters_cut,*popt), color='red') 
+
     indep = [rms[i]/(1+bias[i]) if bias[i]!=-1 else -99 for i in range(len(bias))]
     indep_error = biaserr
     correction_str = '_corr' if correction else '_nocorr'
@@ -105,12 +138,12 @@ for iax2 in range(width):
     ax[1,iax2].errorbar(xcenters, bias, yerr=biaserr, color='green', ecolor='green', 
                         label='bias', linestyle='', markersize=3, capsize=3)
     ax[1,iax2].legend()
-    ax[2,iax2].set_ylim([-0.5,0.5])
     ax[2,iax2].errorbar(xcenters, indep, yerr=indep_error, color='blue', ecolor='blue', 
                         label='rms/(1+bias)', linestyle='', markersize=3, capsize=3)
     ax[2,iax2].legend()
 
 for i in range(nreg):
+    fig_proj[i].subplots_adjust(wspace=0.2, hspace=0.1)
     fig_proj[i].savefig('/eos/user/b/bfontana/www/ResolutionStudies/proj_'+method+'_reg'+str(i+1)+'_'+str(mask)+samples+'.png')
     fig_proj[i].savefig('figs/proj_'+method+'_reg'+str(i+1)+'_'+str(mask)+samples+'.png')
 
@@ -122,24 +155,28 @@ plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/resolu
 
 ###############################################################################
 ###############################################################################
+"""
 width, height = 3, 1 if method == 'fineeta' else 2
 fig, ax = plt.subplots(height, width, figsize=(15,7), 
-                       sharex=False, sharey=False, squeeze=False)
+                       sharex=True, sharey=False, squeeze=False)
 fig.add_subplot(111, frameon=False)
 plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
 plt.grid(False)
 xrangetuple = (-1.05,1.05) if samples == 'inner' else (-.97,2.)
 label = 'total resolution after fine calibration'
-options = dict(bins=(100), range=xrangetuple, histtype='step', color='blue')
-for iax1 in range(height):
-    for iax2 in range(width):
-        if method == 'ed':
-            ax[iax1,iax2].hist(x=deltaE_array[:,iax2], 
-                               label='uncorrected', **options)
-        ax[iax1,iax2].hist(x=deltaEcorr_array[:,iax2], 
-                           label='corrected', **options)
-        ax[iax1,iax2].legend()
-plt.xlabel(r'$(E_{reco}-E_{gen})/E_{gen}$')
-plt.ylabel('Counts')
+options = dict(bins=(100), range=xrangetuple, histtype='step')
+for iax1 in range(width):
+    ax[0,iax1].hist(x=deltaEcorr_array[:,iax1], 
+                    label='corrected', color='olive', **options)
+    ax[0,iax1].legend()
+    if method == 'ed':
+        ax[1,iax1].hist(x=deltaE_array[:,iax1], 
+                        label='uncorrected', color='blue', **options)
+        ax[1,iax1].legend()
+
+plt.xlabel(r'$(E_{reco}-E_{gen})/E_{gen}$', fontsize=12)
+plt.ylabel('Counts', fontsize=12)
+plt.subplots_adjust(wspace=0.2, hspace=0.)
 plt.savefig('figs/resolution_'+str(mask)+samples+'_'+method+'.png')
 plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/resolution_'+str(mask)+samples+'_'+method+'.png')
+"""

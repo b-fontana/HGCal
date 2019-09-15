@@ -13,9 +13,14 @@ file = upopen("root_files/fileweights_"+str(mask)+samples+".root")
 keys = file.keys()
 
 nreg = 3
-fig, ax = plt.subplots(2, nreg, figsize=(15,14), 
-                       sharex=False, sharey=False, squeeze=False)
+figsize = (15.,12.)
+figscale = figsize[0] / figsize[1]
+figratios = [1,.5]
+fig, ax = plt.subplots(len(figratios), nreg, figsize=figsize, 
+                       sharex=True, gridspec_kw={'height_ratios': figratios}, 
+                       sharey=False, squeeze=False)
 fig.add_subplot(111, frameon=False)
+plt.subplots_adjust(wspace=0.2, hspace=0.)
 plt.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)
 plt.grid(False)
 colors = ['blue', 'orange','green','brown']
@@ -32,8 +37,13 @@ for ireg in range(nreg):
     for iw in range(3):
         counts, bins = file['weight{}_sr{};1'.format(iw+1,ireg+1)].numpy()
         ax[1,ireg].hist(bins[:-1], bins, weights=counts, histtype='step', label='weight'+str(iw+1), color=colors[iw+1])
-        ax[1,ireg].legend()
-plt.xlabel('Layers')
-plt.ylabel('Fraction of deposited energy')
+        ax[1,ireg].legend(loc='upper right')
+radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
+for ireg in range(nreg):
+    plt.text(.05, 1.015, 'Integration cylinder radius: '+radius[str(ireg+1)], transform=ax[0,ireg].transAxes)
+    ax[0,ireg].set_yticks([0.025, 0.05, 0.075, 0.1, 0.125])
+ax[1,1].set_xlabel('Layers', fontsize=str(12*figscale), labelpad=1.7*figscale)
+ax[0,0].set_ylabel('Fraction of deposited energy', fontsize=str(12*figscale), labelpad=1.7*figscale)
+ax[1,0].set_ylabel('Weights', fontsize=str(12*figscale), labelpad=1.7*figscale)
 plt.savefig('figs/weights_'+str(mask)+samples+'.png')
 plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/weights_'+str(mask)+samples+'.png')
