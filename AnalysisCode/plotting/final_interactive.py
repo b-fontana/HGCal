@@ -7,13 +7,14 @@ from bokeh.io import output_file, show
 from bokeh.plotting import figure
 #output_file(os.path.basename(__file__)+'.html')
 from bokeh.layouts import column
-from bokeh.models import CustomJS, ColumnDataSource, Slider
-from bokeh.layouts import gridplot
+from bokeh.models import CustomJS, ColumnDataSource
+from bokeh.models.widgets import CheckboxButtonGroup, Slider
+from bokeh.layouts import gridplot, column, row
 
 samples = sys.argv[1]
 start = 2.7 if samples == 'inner' else 1.45
 end = 3 if samples == 'inner' else 1.62
-y_range = (-1.5, 1.5)
+y_range = (-1.5, 2.)
 x_range = (-1, 6.5)
 colors = ['blue', 'darkorange', 'forestgreen', 'crimson']
 colors_diamonds = ['royalblue', 'khaki', 'yellowgreen', 'red']
@@ -57,8 +58,8 @@ def create_final_box_plot(method, region):
     #2nd figure
     plot2_options = dict(plot_height=300, plot_width=500, x_range=x_range, y_range=(y_range[0]-0.3,y_range[1]+0.3), tools="wheel_zoom,box_zoom,pan,reset", output_backend="webgl")
     radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
-    methoddict = dict({'nocorr':'No correction', 'corr_ed':'Shower leakage correction', 'corr_fineeta':'Brute force calibration'})
-    p2 = figure(title="Signal integration radius: "+radius[region]+'                     Method: '+methoddict[method], **plot2_options)
+    methoddict = dict({'nocorr':'No correction', 'corr_ed':'Shower leakage', 'corr_fineeta':'Brute force calibration'})
+    p2 = figure(title="Signal integration radius: "+radius[region]+'            Method: '+methoddict[method], **plot2_options)
     p2.xaxis.visible = False
     box_options = dict(line_color='black', line_width=2, source=source2)
     for imask in masks:
@@ -378,5 +379,44 @@ slider1c, box1c = create_final_box_plot('nocorr', '3')
 slider2c, box2c = create_final_box_plot('corr_ed', '3')
 slider3c, box3c = create_final_box_plot('corr_fineeta', '3')
 
-layout = gridplot([[slider1a, slider2a, slider3a],[box1a, box2a, box3a],[slider1b, slider2b, slider3b],[box1b, box2b, box3b],[slider1c, slider2c, slider3c],[box1c, box2c, box3c]])
+sliders1 = [slider1a, slider2a, slider3a]
+sliders2 = [slider1b, slider2b, slider3b]
+sliders3 = [slider1c, slider2c, slider3c]
+boxes1 = [box1a, box2a, box3a]
+boxes2 = [box1b, box2b, box3b]
+boxes3 = [box1c, box2c, box3c]
+
+col1 = column(slider1a)
+col2 = column(slider1b)
+col3 = column(slider1c)
+checkbox = CheckboxButtonGroup(labels=["No correction", "Shower leakage method", "Baseline calibration"], active=[])
+checkbox_sr = CheckboxButtonGroup(labels=["1.3cm", "2.6cm", "5.3cm"], active=[])
+checkbox_callback = CustomJS(args=dict(sliders1=sliders1, sliders2=sliders2, sliders3=sliders3, boxes1=boxes1, boxes2=boxes2, boxes3=boxes3, 
+                                       col1=col1, col2=col2, col3=col3, checkbox=checkbox, checkbox_sr=checkbox_sr), code="""
+                      const children_sr1 = [];
+                      const children_sr2 = [];
+                      const children_sr3 = [];
+                      for (const i of checkbox.active) {
+                         if (checkbox_sr.active.includes(0)) {
+                            children_sr1.push(sliders1[i]);
+                            children_sr1.push(boxes1[i]);
+                         }
+                         if (checkbox_sr.active.includes(1)) {
+                            children_sr2.push(sliders2[i]);
+                            children_sr2.push(boxes2[i]);
+                         }
+                         if (checkbox_sr.active.includes(2)) {
+                            children_sr3.push(sliders3[i]);
+                            children_sr3.push(boxes3[i]);
+                         }
+                      } 
+                      col1.children = children_sr1;
+                      col2.children = children_sr2;
+                      col3.children = children_sr3;
+                      """)
+
+checkbox.js_on_change('active', checkbox_callback)
+checkbox_sr.js_on_change('active', checkbox_callback)
+
+layout = gridplot([[checkbox],[checkbox_sr], [col1, col2, col3]])
 show(layout)
