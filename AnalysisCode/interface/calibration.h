@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include "ROOT/RDataFrame.hxx"
 #include "ROOT/RVec.hxx"
 #include "TGraph.h"
@@ -25,6 +26,8 @@
 #include "UserCode/AnalysisCode/interface/types.h"
 #include "UserCode/AnalysisCode/interface/parser.h"
 
+enum class CalibrationType {GenEta, RecoEn, GenPhi, PU, NTypes};
+
 class CalibratorInputParameters 
 {
  public:
@@ -42,7 +45,11 @@ class CalibratorInputParameters
   std::string noPUFile_raw = "";
   vec1d<float_> etareg;
   vec1d<float_> etareg_central;
+  vec1d<float_> etareg_fineeta;
   vec1d<float_> enreg;
+  vec1d<float_> enreg_fineeta;
+  vec1d<float_> phireg;
+  vec1d<float_> phireg_fineeta;
   vec1d<float_> bckgcuts;
   std::string label = "";
   std::string outpath = "";
@@ -53,6 +60,7 @@ class CalibratorInputParameters
 class Calibrator
 {
  private:
+  enum DataRow {Gen, Geta, En, Noi, Gphi, NElements};
   CalibratorInputParameters p;
   vec1d<float_> etareg_shift;
 
@@ -60,10 +68,9 @@ class Calibrator
 					      const ROOT::VecOps::RVec<float_>& hits_en,
 					      const ROOT::VecOps::RVec<float_>& hits_sr,
 					      const ROOT::VecOps::RVec<float_>& hits_roi_idx);
-  TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, 
-			  const std::string&, const bool_&);
+  TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, const std::string&, const bool_&);
   vec3d<float> get_values_for_calibration(const std::string&, const std::string&, const uint_&, const uint_&, 
-				      std::optional<vec1d<float_>> etas = std::nullopt);
+					  const CalibrationType& calib_type, opt<vec1d<float_>> calib_var_opt = std::nullopt);
   vec3d<float> get_values_for_compensation(const std::string&, const uint_&, const vec1d< tup3<float_> >, 
 					   const float_&, const uint_& n_pions_per_event=2);
   vec1d< tup3<float_> > do_pions_linear_regression(vec4d<float_>, const uint_&);
@@ -74,8 +81,14 @@ class Calibrator
   vec1d<mapstr<TF1*>> calibration_values; 
 
   Calibrator(const CalibratorInputParameters&);
-  void create_pion_calibration_values(const int_&, const bool_&, const bool_&);
-  void create_photon_calibration_values(const int&, const bool_&, const bool_&);
+  ~Calibrator();
+  void create_pion_calibration_values(const vec1d<int_>&, const bool_&, const bool_&,
+				      opt<vec1d<CalibrationType>> calib_types_opt=std::nullopt, 
+				      opt<vec2d<float_>> calib_vars_opt=std::nullopt);
+  void create_photon_calibration_values(const vec1d<int_>&, const bool_&, const bool_&, 
+					opt<std::string> file_opt=std::nullopt, 
+					opt<vec1d<CalibrationType>> calib_types_opt=std::nullopt, 
+					opt<vec2d<float_>> calib_vars_opt=std::nullopt);
 };
 
 #endif //CALIBRATION_H
