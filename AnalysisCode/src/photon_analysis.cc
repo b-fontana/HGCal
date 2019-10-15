@@ -3,9 +3,9 @@
 PhotonsPartialWafersAnalysis::PhotonsPartialWafersAnalysis(std::string mask, std::string samples, std::string method) 
 {
   vec1d<std::string> varnames;
-  if(method == "fineeta")
+  if(method == mMethod[Method::BruteForce])
     varnames = {"mingenen", "etareg_"+samples, "nreg", "input"};
-  else if(method == "ed")
+  else if(method == mMethod[Method::ShowerLeakage])
     varnames = {"mingenen", "etareg_"+samples, "nreg", "nlayers", 
 		"input", "bckgcuts_"+samples};
   else
@@ -13,65 +13,86 @@ PhotonsPartialWafersAnalysis::PhotonsPartialWafersAnalysis(std::string mask, std
       std::cout << "The specified methods was not implemented." << std::endl;
       std::exit(0);
     }
-  params = std::make_unique<CalibratorInputParameters>("params_photons.csv", varnames, mask, samples, method, "Photon");
+  params = std::make_unique<CalibratorInputParameters>("params_photons.csv", varnames, mask, samples, method, 
+						       mParticleType[ParticleType::Photon]);
   calibrator = std::make_unique<Calibrator>(*params);
-  netas = params->etareg.size();
 
-  if(params->samples=="inner") {
+  if(params->samples == mDetectorRegion[DetectorRegion::Inner]) {
     boundaries = {5, 5, 5};
     corr_mode = "left";
     lshift = {.65, .59, .48};
   }
-  else if(params->samples=="outer") {
+  else if(params->samples == mDetectorRegion[DetectorRegion::Outer]) {
     boundaries = {23, 23, 23};
     corr_mode = "right";
     lshift = {1., 1., 1.};
   }
-
-  this->do_photon_calibration(6, false, true);
 }
 
-void PhotonsPartialWafersAnalysis::do_photon_calibration(const int& nq, const bool_& pu, const bool_& draw_plot)
+void PhotonsPartialWafersAnalysis::do_photon_calibration(const vec1d<int_>& nq, const bool_& pu, const bool_& draw_plot,
+							 opt<std::string> file_opt, 
+							 opt<vec1d<CalibrationType>> calib_types_opt,
+							 opt<vec2d<float_>> calib_vars_opt)
 {
-  (this->calibrator)->create_photon_calibration_values(6, false, true);
+  this->calibration_values.clear();
+  if(calib_types_opt != std::nullopt)
+    this->calib_types = calib_types_opt.value();
+  else
+    this->calib_types = {CalibrationType::GenEta, CalibrationType::RecoEn, CalibrationType::GenPhi};
+
+  if(calib_vars_opt != std::nullopt)
+    this->calib_vars = calib_vars_opt.value();
+  else
+    this->calib_vars = {params->etareg,params->enreg,params->phireg};
+
+  assert(this->calib_types.size() == this->calib_vars.size());
+  assert(nq.size() == calib_vars.size());
+
+  std::string file = file_opt.value_or(params->noPUFile);
+  (this->calibrator)->create_photon_calibration_values(nq, false, true, file, this->calib_types, this->calib_vars);
   this->calibration_values = (this->calibrator)->calibration_values;
 }
 
-std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> PhotonsPartialWafersAnalysis::define_f1()
+std::function<vec1d<float_>(const float_&, const float_&, const vec1d<float_>&)> PhotonsPartialWafersAnalysis::define_f1()
 {
-  auto lambda = [this](const float_& geta, const vec1d<float_>& en)
+  auto lambda = [this](const float_& geta, const float_& gphi, const vec1d<float_>& en)
     {
       vec1d<float_> f1(params->nreg, 1.);
-      for(uint_ ireg=0; ireg<params->nreg; ++ireg) {
-	for(auto it = params->etareg.cbegin(); it!= params->etareg.cend()-1; ++it) {
-	  std::string idstr;
-	  if (geta < params->etareg[0] or geta > params->etareg[this->netas-1]) 
+      for(uint_ ireg=0; ireg<params->nreg; ++ireg) 
+	{
+	  for(auto it_type = this->calib_types.cbegin(); it_type != this->calib_types.cend(); ++it_type) 
 	    {
-	      idstr = "sr" + std::to_string(ireg+1) + "from" + 
-		etastr(std::to_string(params->etareg[0])) + "to" + etastr(std::to_string(params->etareg[this->netas-1]));
-	    }
-	  else if (geta<*it or geta>*(it+1))
-	    continue;
-	  else 
-	    {
-	      idstr = "sr" + std::to_string(ireg+1) + "from" + 
-		etastr(std::to_string(*it)) + "to" + etastr(std::to_string(*(it+1)));
-	    }
-
-	  //it should only get here once per event
-	  if (calibration_values[0].size() > 0) 
-	    {
-	      check_key(idstr, calibration_values[0]);
-	      f1[ireg] /= calibration_values[0][idstr]->Eval(geta)+1.0;
-	      if (calibration_values[1].size() > 0) 
+	      uint_ type_idx = std::distance(this->calib_types.cbegin(), it_type);
+	      umap<CalibrationType, float_> prod_table = {{CalibrationType::GenEta, geta}, 
+							  {CalibrationType::RecoEn, en[ireg]}, 
+							  {CalibrationType::GenPhi, gphi}};
+	      float vartmp1, vartmp2;
+	      if( prod_table[*it_type] <= this->calib_vars[type_idx][0] )
 		{
-		  check_key(idstr, calibration_values[1]);
-		  f1[ireg] /= calibration_values[1][idstr]->Eval(f1[ireg]*en[ireg])+1.0;
+		  vartmp1 = calib_vars[type_idx][0];
+		  vartmp2 = calib_vars[type_idx][1];
 		}
+	      else if( prod_table[*it_type] >= this->calib_vars[type_idx].back() )
+		{
+		  vartmp1 = calib_vars[type_idx].end()[-2];
+		  vartmp2 = calib_vars[type_idx].back();
+		}
+	      else
+		{
+		  auto const it_bins = std::lower_bound(calib_vars[type_idx].begin(), calib_vars[type_idx].end(), prod_table[*it_type]);
+		  vartmp1 = *(it_bins-1);
+		  vartmp2 = *it_bins;
+		}
+	      std::string str1 = round_to_string(vartmp1, 3); 
+	      std::string str2 = round_to_string(vartmp2, 3); 
+	      std::string idstr = "sr" + std::to_string(ireg+1) + "from" + str1 + "to" + str2;
+
+	      //it should only get here once per event
+	      check_key(idstr, this->calibration_values[to_underlying(*it_type)]);
+	      f1[ireg] /= (this->calibration_values[to_underlying(*it_type)][idstr]->Eval(f1[ireg]*prod_table[*it_type])+1.0);
 	    }
+	  //assert(f1[ireg] != 1.);
 	}
-	assert(f1[ireg] != 1.);
-      }
       return f1;
     };
   return lambda;
@@ -82,13 +103,14 @@ std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> PhotonsPartial
   auto lambda = [this](const float_& geta, const vec1d<float_>& noi)
     {
       vec1d<float_> f2(params->nreg, 0.);
+      /*
       for(uint_ ireg=0; ireg<params->nreg; ++ireg) {
-	for(auto it = params->etareg.cbegin(); it!=(params->etareg.cend()-1); ++it) {
+	for(auto it = this->etas.cbegin(); it!=(this->etas.cend()-1); ++it) {
 	  std::string idstr;
-	  if (geta < params->etareg[0] or geta > params->etareg[this->netas-1]) 
+	  if (geta < this->etas[0] or geta > this->etas[this->netas-1]) 
 	    {
 	      idstr = "sr" + std::to_string(ireg+1) + "from" + 
-		etastr(std::to_string(params->etareg[0])) + "to" + etastr(std::to_string(params->etareg[this->netas-1]));
+		etastr(std::to_string(this->etas[0])) + "to" + etastr(std::to_string(this->etas[this->netas-1]));
 	    }
 	  else if (geta < *it or geta > *(it+1))
 	    continue;
@@ -99,13 +121,14 @@ std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> PhotonsPartial
 	    }
 
 	  //it should only get here once per event
-	  if (calibration_values[2].size() > 0) 
+	  if (calibration_values[to_underlying(CalibrationType::PU)].size() > 0) 
 	    {
-	      check_key(idstr, calibration_values[2]);
-	      f2[ireg-1] = calibration_values[2][idstr]->Eval(noi[2]);
+	      check_key(idstr, calibration_values[to_underlying(CalibrationType::PU)]);
+	      f2[ireg-1] = calibration_values[to_underlying(CalibrationType::PU)][idstr]->Eval(noi[2]);
 	    }
 	}
       }
+      */
       return f2;
     };
   return lambda;
@@ -127,8 +150,8 @@ std::function<bool_(const float_&, const vec1d<float_>&)> PhotonsPartialWafersAn
 {
   auto lambda = [this](const float_& geta, const vec1d<float_>& encalib)
     {
-      bool_ selection = ( ((params->samples == "inner" && geta < params->etareg[0]+0.05) or 
-			   (params->samples == "outer" && geta > params->etareg[params->etareg.size()-1]-0.05))
+      bool_ selection = ( ((params->samples == mDetectorRegion[DetectorRegion::Inner] && geta < params->etareg[0]+0.05) or 
+			   (params->samples == mDetectorRegion[DetectorRegion::Outer] && geta > params->etareg.back()-0.05))
 			  and encalib[0] != 0 );
       return selection;
     };
@@ -206,9 +229,9 @@ std::function<vec1d<float_>(const vec1d<float_>&, const vec2d<float_>&, const ve
 	  bool_ weight_limit;
 	  for (uint_ il=1; il<=params->nlayers; ++il) 
 	    {
-	      if(params->samples=="inner")
+	      if(params->samples == mDetectorRegion[DetectorRegion::Inner])
 		weight_limit = il > boundaries[ireg];
-	      else if(params->samples=="outer")
+	      else if(params->samples == mDetectorRegion[DetectorRegion::Outer])
 		weight_limit = il < boundaries[ireg];
 
 	      if(sid[ireg]==0)
@@ -259,9 +282,9 @@ std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<int_>&)> PhotonsPa
 	   if(sid[ireg] > 0) 
 	     {
 	       encalib_corr[ireg] *= ( 1 / (1-low_stats_factor[ireg]) );
-	       if(params->samples == "inner") 
+	       if(params->samples == mDetectorRegion[DetectorRegion::Inner]) 
 		 encalib_corr[ireg] *= 1/0.09;
-	       else if(params->samples == "outer") 
+	       else if(params->samples == mDetectorRegion[DetectorRegion::Outer]) 
 		 encalib_corr[ireg] *= 1/0.08;
 	     }
 	 }
@@ -271,7 +294,13 @@ std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<int_>&)> PhotonsPa
 }
 
 
-CalibratorInputParameters PhotonsPartialWafersAnalysis::get_input_parameters() 
+const CalibratorInputParameters& PhotonsPartialWafersAnalysis::get_calibrator_parameters() const
 {
   return *(this->params);
+}
+
+const vec1d<float_>& PhotonsPartialWafersAnalysis::get_software_correction_shift() const
+{
+  
+  return lshift;
 }

@@ -21,6 +21,7 @@
 #include "TLinearFitter.h"
 #include "TVectorD.h"
 #include "TBufferJSON.h"
+#include "TSpline.h"
 
 #include "UserCode/AnalysisCode/interface/utils.h"
 #include "UserCode/AnalysisCode/interface/types.h"
@@ -45,10 +46,10 @@ class CalibratorInputParameters
   std::string noPUFile_raw = "";
   vec1d<float_> etareg;
   vec1d<float_> etareg_central;
-  vec1d<float_> etareg_fineeta;
   vec1d<float_> enreg;
-  vec1d<float_> enreg_fineeta;
   vec1d<float_> phireg;
+  vec1d<float_> etareg_fineeta;
+  vec1d<float_> enreg_fineeta;
   vec1d<float_> phireg_fineeta;
   vec1d<float_> bckgcuts;
   std::string label = "";
@@ -68,7 +69,7 @@ class Calibrator
 					      const ROOT::VecOps::RVec<float_>& hits_en,
 					      const ROOT::VecOps::RVec<float_>& hits_sr,
 					      const ROOT::VecOps::RVec<float_>& hits_roi_idx);
-  TF1* calibrate_spectrum(TH2D*, const std::string&, const std::string&, const std::string&, const bool_&);
+  void draw_spectrum(TH2D*, TGraphAsymmErrors*, TSpline3*, const std::string&, const std::string&, TF1*, const bool_&);
   vec3d<float> get_values_for_calibration(const std::string&, const std::string&, const uint_&, const uint_&, 
 					  const CalibrationType& calib_type, opt<vec1d<float_>> calib_var_opt = std::nullopt);
   vec3d<float> get_values_for_compensation(const std::string&, const uint_&, const vec1d< tup3<float_> >, 
@@ -78,7 +79,8 @@ class Calibrator
   void do_pion_compensation(const uint_&, const vec1d<tup3<float_>>&, const bool_&, const bool_&);
  
  public: 
-  vec1d<mapstr<TF1*>> calibration_values; 
+  //vec1d<mapstr<TF1*>> calibration_values; 
+  vec1d<mapstr<TSpline3*>> calibration_values; 
 
   Calibrator(const CalibratorInputParameters&);
   ~Calibrator();

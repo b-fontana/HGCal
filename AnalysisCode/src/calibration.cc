@@ -4,7 +4,7 @@ Calibrator::Calibrator(const CalibratorInputParameters& p_): p(p_)
 {
   for(uint_ i=0; i<to_underlying(CalibrationType::NTypes); ++i) 
     {
-      mapstr<TF1*> tmpmap;
+      mapstr<TSpline3*> tmpmap;
       calibration_values.push_back(tmpmap);
     }
 }
@@ -174,10 +174,16 @@ void Calibrator::create_pion_calibration_values(const vec1d<int_>& nq, const boo
   assert(calib_types.size() == calib_vars.size());
   assert(nq.size() == calib_vars.size());
 
-  typedef std::tuple< DataRow,std::string,std::string,std::string> tt;
-  umap<CalibrationType, tt> type_table = {{CalibrationType::GenEta, std::make_tuple(DataRow::Geta, "resVSeta_", "pol2", ";|#eta|;#DeltaE/E")}, 
-		      {CalibrationType::RecoEn, std::make_tuple(DataRow::En, "resVSen_", "pol1", ";Reco energy [GeV];#DeltaE/E")}, 
-		      {CalibrationType::GenPhi, std::make_tuple(DataRow::Gphi, "resVSphi_", "pol1", ";|#phi|;#DeltaE/E")}};
+  TF1 *f_eta = new TF1("f_eta", "[0] + [1]*x + [2]*x*x", this->p.etareg[0], this->p.etareg.back());
+  f_eta->SetParameter(0, 1.); f_eta->SetParameter(1, 1.); f_eta->SetParameter(2, 1.);
+  TF1 *f_en = new TF1("f_en", "[0] + [1]*x", this->p.enreg[0], this->p.enreg.back());
+  f_en->SetParameter(0, 1.); f_en->SetParameter(1, 1.);
+  TF1 *f_phi = new TF1("f_phi", "[0]*sin([1]*x) + [2]", this->p.phireg[0], this->p.phireg.back());
+  f_phi->SetParameter(0, 1.); f_phi->SetParameter(1, 2.); f_phi->SetParameter(2, -0.5);
+  umap< CalibrationType, std::tuple< DataRow,std::string, TF1*, std::string> > type_table = {
+    {CalibrationType::GenEta, std::make_tuple(DataRow::Geta, "resVSeta_", f_eta, ";|#eta|;#DeltaE/E")}, 
+    {CalibrationType::RecoEn, std::make_tuple(DataRow::En, "resVSen_", f_en, ";Reco energy [GeV];#DeltaE/E")}, 
+    {CalibrationType::GenPhi, std::make_tuple(DataRow::Gphi, "resVSphi_", f_phi, ";|#phi|;#DeltaE/E")}};
 
   std::string fregression = ( "../HGCalMaskResolutionAna/summaries/summary_mask" + std::to_string(this->p.mask) 
 			      + "_central_Pions.root" );
@@ -216,11 +222,10 @@ void Calibrator::create_pion_calibration_values(const vec1d<int_>& nq, const boo
 	  for(auto it = calib_vars[type_idx].cbegin(); it!=calib_vars[type_idx].cend()-1; ++it) 
 	    {
 	      uint_ idx = std::distance(calib_vars[type_idx].cbegin(), it);
-
 	      float_ vartmp1 = *it;      
 	      float_ vartmp2 = *(it+1);
-	      std::string str1 = round_to_string(vartmp1, 2); 
-	      std::string str2 = round_to_string(vartmp2, 2); 
+	      std::string str1 = round_to_string(vartmp1); 
+	      std::string str2 = round_to_string(vartmp2); 
 	      std::string idstr = "sr" + std::to_string(ireg) + "from" + str1 + "to" + str2;
 
 	      uint_ ss = x[0][idx].size();
@@ -253,10 +258,14 @@ void Calibrator::create_pion_calibration_values(const vec1d<int_>& nq, const boo
 		    //corresponding to the variable being used for the correction
 		    float vartmp1_other, vartmp2_other;
 		    vec1d<float_> bins = std::get<1>(var_table[type]);
-		    if( std::get<0>(var_table[type]) < calib_vars[k][0] or
-			std::get<0>(var_table[type]) > calib_vars[k].back() )
+		    if( std::get<0>(var_table[type]) <= calib_vars[k][0] )
 		      {
 			vartmp1_other = calib_vars[k][0];
+			vartmp2_other = calib_vars[k][1];
+		      }
+		    else if( std::get<0>(var_table[type]) >= calib_vars[k].back() )
+		      {
+			vartmp1_other = calib_vars[k].end()[-2];
 			vartmp2_other = calib_vars[k].back();
 		      }
 		    else
@@ -265,20 +274,17 @@ void Calibrator::create_pion_calibration_values(const vec1d<int_>& nq, const boo
 			vartmp1_other = *(it_bins-1);
 			vartmp2_other = *it_bins;
 		      }
-		    std::string str1_other = round_to_string(vartmp1_other, 2);
-		    std::string str2_other = round_to_string(vartmp2_other, 2);
+		    std::string str1_other = round_to_string(vartmp1_other);
+		    std::string str2_other = round_to_string(vartmp2_other);
 		    std::string idstr_other = "sr" + std::to_string(ireg) + "from" + str1_other + "to" + str2_other;
 		    
 		    //the for loop assures that each additional variable being used for the calibration implies
 		    //an additional correction for the reconstructed energy
-		    recen.back() /= (this->calibration_values[to_underlying(type)][idstr_other]->Eval( std::get<0>(var_table[type]) )+1.);
+		    recen.back() /= (this->calibration_values[to_underlying(type)][idstr_other]->Eval( std::get<0>(var_table[type])) + 1.);
 		  }
 
 		DataRow drow = std::get<0>(type_table[*it_type]);
-		if(drow == DataRow::En)
-		  xq[j] = static_cast<double_>( x[0][idx][j][ DataRow::Gen ] ); //bin using gen en instead of reco en
-		else
-		  xq[j] = static_cast<double_>( x[0][idx][j][ drow ] ); 
+		xq[j] = static_cast<double_>( x[0][idx][j][ drow ] ); 
 	      }
 	      double quantiles[nq[type_idx]+1];
 	      TMath::Quantiles(ss, nq[type_idx]+1, xq, quantiles, probs, kFALSE);
@@ -295,9 +301,10 @@ void Calibrator::create_pion_calibration_values(const vec1d<int_>& nq, const boo
 		htmp->Fill(vt[*it_type], deltaE);
 	      }
 
-	      this->calibration_values[to_underlying(*it_type)][idstr] = 
-		Calibrator::calibrate_spectrum(htmp, "SR" + std::to_string(ireg), 
-					       p.label+"(PU=0)", std::get<2>(type_table[*it_type]), draw_plot);
+	      TGraphAsymmErrors* gae = build_median_profile(htmp);
+	      this->calibration_values[to_underlying(*it_type)][idstr] = new TSpline3(("spline_"+idstr).c_str(), gae);
+	      Calibrator::draw_spectrum(htmp, gae, this->calibration_values[to_underlying(*it_type)][idstr], "SR"+std::to_string(ireg), 
+					p.label+"(PU=0)", std::get<2>(type_table[*it_type]), draw_plot);
 	      delete htmp;
 	    }
 	}
@@ -327,7 +334,6 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const b
     }
 
   std::string file = file_opt.value_or(this->p.noPUFile);
-
   vec1d<CalibrationType> calib_types;
   if(calib_types_opt == std::nullopt)
     calib_types = {CalibrationType::GenEta, CalibrationType::RecoEn, CalibrationType::GenPhi};
@@ -346,27 +352,34 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const b
   assert(calib_types.size() == calib_vars.size());
   assert(nq.size() == calib_vars.size());
 
-  using tt = std::tuple< DataRow,std::string,std::string,std::string>;
-  umap<CalibrationType, tt > type_table = {{CalibrationType::GenEta, std::make_tuple(DataRow::Geta, "resVSeta_", "pol2", ";|#eta|;#DeltaE/E")}, 
-	       {CalibrationType::RecoEn, std::make_tuple(DataRow::En, "resVSen_", "pol1", ";Reco energy [GeV];#DeltaE/E")}, 
-	       {CalibrationType::GenPhi, std::make_tuple(DataRow::Gphi, "resVSphi_", "pol1", ";|#phi|;#DeltaE/E")}};
-  
+  TF1 *f_eta = new TF1("f_eta", "[0] + [1]*x + [2]*x*x", this->p.etareg[0], this->p.etareg.back());
+  f_eta->SetParameter(0, 1.); f_eta->SetParameter(1, 1.); f_eta->SetParameter(2, 1.);
+  TF1 *f_en = new TF1("f_en", "[0] + [1]*x", this->p.enreg[0], this->p.enreg.back());
+  f_en->SetParameter(0, 1.); f_en->SetParameter(1, 1.);
+  TF1 *f_phi = new TF1("f_phi", "[0]*sin([1]*x - TMath::Pi()/2) + [2]", this->p.phireg[0], this->p.phireg.back());
+  f_phi->SetParameter(0, 1.); f_phi->SetParLimits(0, 0.1, 5.);
+  f_phi->SetParameter(1, 12.); f_phi->SetParLimits(1, 8., 17.); 
+  f_phi->SetParameter(2, -0.5); f_phi->SetParLimits(2, -1, 0.);
+  umap<CalibrationType, std::tuple< DataRow, std::string, TF1*, std::string> > type_table = {
+    {CalibrationType::GenEta, std::make_tuple(DataRow::Geta, "resVSeta_", f_eta, ";|#eta|;#DeltaE/E")}, 
+    {CalibrationType::RecoEn, std::make_tuple(DataRow::En, "resVSen_", f_en, ";Reco energy [GeV];#DeltaE/E")}, 
+    {CalibrationType::GenPhi, std::make_tuple(DataRow::Gphi, "resVSphi_", f_phi, ";|#phi|;#DeltaE/E")}};
+
   for(uint_ ireg=1; ireg<=p.nreg; ++ireg) {      
     std::string hstr = "SR" + std::to_string(ireg);
-
     //loop over calibration variables
     for(auto it_type = calib_types.cbegin(); it_type != calib_types.cend(); ++it_type) 
       {
 	uint_ type_idx = std::distance(calib_types.cbegin(), it_type);
+	std::cout << type_idx << std::endl;
 	vec3d<float_> x = Calibrator::get_values_for_calibration(file, "data", 1, ireg, *it_type, calib_vars[type_idx]);
 	for(auto it = calib_vars[type_idx].cbegin(); it!=calib_vars[type_idx].cend()-1; ++it) 
 	  {
 	    uint_ idx = std::distance(calib_vars[type_idx].cbegin(), it);
-
 	    float_ vartmp1 = *it;
 	    float_ vartmp2 = *(it+1);
-	    std::string str1 = round_to_string(vartmp1, 2);
-	    std::string str2 = round_to_string(vartmp2, 2);
+	    std::string str1 = round_to_string(vartmp1);
+	    std::string str2 = round_to_string(vartmp2);
 	    std::string idstr = "sr" + std::to_string(ireg) + "from" + str1 + "to" + str2;
 
 	    uint_ ss = x[idx].size();
@@ -376,31 +389,28 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const b
 	    double_ xq[ss];
 	    DataRow drow = std::get<0>(type_table[*it_type]);
 	    for(uint_ j=0; j<ss; ++j)
-	      {
-		if(drow == DataRow::En)
-		  xq[j] = static_cast<double_>( x[idx][j][ DataRow::Gen ] ); //bin using gen en instead of reco en
-		else
-		  xq[j] = static_cast<double_>( x[idx][j][ drow ] );  
-	      }
+	      xq[j] = static_cast<double_>( x[idx][j][ drow ] );  
 	    double quantiles[nq[type_idx]+1];
 	    TMath::Quantiles(ss, nq[type_idx]+1, xq, quantiles, probs, kFALSE);
-
+	    std::cout << *it << ", " << *(it+1) << std::endl;
 	    //relative calibration versus eta
 	    std::string hn = idstr + "_" + this->p.samples + "_mask" + std::to_string(this->p.mask);
-	    TH2D* htmp = new TH2D( (std::get<1>(type_table[*it_type]) + hn).c_str(), ";|#eta|;#DeltaE/E", 
+	    TH2D* htmp = new TH2D( (std::get<1>(type_table[*it_type]) + hn).c_str(), std::get<3>(type_table[*it_type]).c_str(), 
 				   nq[type_idx], quantiles, 100, -1, 1);
-	    float_ genen, geneta, genphi, recen, deltaE;
-
+	    float_ genen, recen, deltaE;
 	    for(uint_ i=0; i<ss; ++i) 
 	      {
 		genen = x[idx][i][DataRow::Gen];
-		geneta = x[idx][i][DataRow::Geta];
 		recen = x[idx][i][DataRow::En];
-		genphi = x[idx][i][DataRow::Gphi];
-		using tt = std::tuple<float_, vec1d<float_>>;
-		umap<CalibrationType, tt> var_table = {{CalibrationType::GenEta, std::make_tuple(geneta, this->p.etareg)}, 
-						       {CalibrationType::RecoEn, std::make_tuple(recen, this->p.enreg)}, 
-						       {CalibrationType::GenPhi, std::make_tuple(genphi, this->p.phireg)}}; 
+
+		umap<CalibrationType, std::tuple<float_, vec1d<float_>> > var_table;
+		for(auto it2_type = calib_types.cbegin(); it2_type != calib_types.cend(); ++it2_type) 
+		  {
+		    int_ index_ = std::distance(calib_types.cbegin(), it2_type);
+		    var_table[*it2_type] = std::make_tuple(x[idx][i][std::get<0>(type_table[*it2_type])], 
+							   calib_vars[index_]);
+		  }
+					
 		for(uint_ k=0; k<type_idx; ++k)
 		  {
 		    CalibrationType type = calib_types[k];
@@ -409,10 +419,14 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const b
 		    //corresponding to the variable being used for the correction
 		    float vartmp1_other, vartmp2_other;
 		    vec1d<float_> bins = std::get<1>(var_table[type]);
-		    if( std::get<0>(var_table[type]) < calib_vars[k][0] or
-			std::get<0>(var_table[type]) > calib_vars[k].back() )
+		    if( std::get<0>(var_table[type]) <= calib_vars[k][0] )
 		      {
 			vartmp1_other = calib_vars[k][0];
+			vartmp2_other = calib_vars[k][1];
+		      }
+		    else if( std::get<0>(var_table[type]) >= calib_vars[k].back() )
+		      {
+			vartmp1_other = calib_vars[k].end()[-2];
 			vartmp2_other = calib_vars[k].back();
 		      }
 		    else
@@ -421,57 +435,61 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const b
 			vartmp1_other = *(it_bins-1);
 			vartmp2_other = *it_bins;
 		      }
-		    std::string str1_other = round_to_string(vartmp1_other, 2);
-		    std::string str2_other = round_to_string(vartmp2_other, 2);
+		    std::string str1_other = round_to_string(vartmp1_other);
+		    std::string str2_other = round_to_string(vartmp2_other);
 		    std::string idstr_other = "sr" + std::to_string(ireg) + "from" + str1_other + "to" + str2_other;
-		    
+
 		    //the for loop assures that each additional variable being used for the calibration implies
-		    //an additional correction for the reconstructed energy
-		    recen /= (this->calibration_values[to_underlying(type)][idstr_other]->Eval( std::get<0>(var_table[type]) )+1.0);
+		    //an additional correction for the reconstructed energy	    
+		    recen /= (this->calibration_values[to_underlying(type)][idstr_other]->Eval(std::get<0>(var_table[type]))+1.0);
 		  }
+
 		deltaE = (recen/genen) - 1.;
 		htmp->Fill(std::get<0>(var_table[*it_type]), deltaE);
 	      }
-	    this->calibration_values[to_underlying(*it_type)][idstr] = 
-	      Calibrator::calibrate_spectrum(htmp, "SR" + std::to_string(ireg), 
-					     p.label+"(PU=0)", std::get<2>(type_table[*it_type]), draw_plot);
+
+	    TGraphAsymmErrors* gae = build_median_profile(htmp);
+	    this->calibration_values[to_underlying(*it_type)][idstr] = new TSpline3(("spline_"+idstr).c_str(), gae);
+	    Calibrator::draw_spectrum(htmp, gae,  this->calibration_values[to_underlying(*it_type)][idstr], "SR" + std::to_string(ireg), 
+				      p.label+"(PU=0)", std::get<2>(type_table[*it_type]), draw_plot);
+
 	    delete htmp;
 	  }
       }
   }
 }
 
-TF1* Calibrator::calibrate_spectrum(TH2D* h, const std::string& title, 
-				    const std::string& proc, const std::string& func, 
-				    const bool& draw_plot)
+void Calibrator::draw_spectrum(TH2D* h, TGraphAsymmErrors* g, TSpline3* s, const std::string& title, 
+			       const std::string& proc, TF1* func, const bool& draw_plot)
 {
-  TGraphAsymmErrors* prof = build_median_profile(h);
-  prof->Fit(func.c_str());
+  /*
+  prof->Fit(func->GetName());
   std::string clone_str = h->GetName() + title + "_calib";
   TF1* calibGr = static_cast<TF1*>(prof->GetListOfFunctions()->At(0)->Clone(clone_str.c_str()) );
- 
-  if(draw_plot) {
-    TCanvas c("c", "c", 500, 500);
-    c.SetTopMargin(0.05);
-    c.SetBottomMargin(0.1);
-    c.SetLeftMargin(0.12);
-    c.SetRightMargin(0.1);
-    h->Draw("colz");
-    prof->Draw("e2p");
+  */
+  TCanvas c("c", "c", 500, 500);
+  c.SetTopMargin(0.05);
+  c.SetBottomMargin(0.1);
+  c.SetLeftMargin(0.12);
+  c.SetRightMargin(0.1);
+  h->Draw("colz");
+  g->Draw("e2p");
+  s->SetLineColor(kRed);
+  s->Draw("same");
 
-    TLatex tex;
-    tex.SetTextFont(42);
-    tex.SetTextSize(0.04);
-    tex.SetNDC();
-    tex.DrawLatex(0.12, 0.96, "#bf{CMS} #it{simulation preliminary}");
-    tex.DrawLatex(0.15, 0.88, title.c_str());
-    tex.SetTextAlign(31);
-    tex.DrawLatex(0.97, 0.96, proc.c_str());
-    c.SaveAs( (this->p.outpath + h->GetName() + "_" + title + ".png").c_str() );
-  }
-
+  TLatex tex;
+  tex.SetTextFont(42);
+  tex.SetTextSize(0.04);
+  tex.SetNDC();
+  tex.DrawLatex(0.12, 0.96, "#bf{CMS} #it{simulation preliminary}");
+  tex.DrawLatex(0.15, 0.88, title.c_str());
+  tex.SetTextAlign(31);
+  tex.DrawLatex(0.97, 0.96, proc.c_str());
+  c.SaveAs( (this->p.outpath + h->GetName() + "_" + title + ".png").c_str() );
+  /*
   prof->Delete();
   return calibGr;
+  */
 }
 
 vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, const std::string& tname, 
@@ -487,7 +505,7 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
       calib_var = type_table[calib_type];
   else
     calib_var = calib_var_opt.value() ;
-  
+
   vec3d<float_> x;
   //fill energies vector with 2d vectors, one per etaregion considered in the calibration
   for(uint_ i=0; i<calib_var.size()-1; ++i) {
@@ -505,6 +523,7 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
     
     bool_ region_check = false;
     for(auto it = calib_var.cbegin(); calib_var.cend()-it>1; ++it) {
+
       if(binning_var <= *it || binning_var > *(it+1))
 	continue; 
       assert(!region_check);
@@ -518,33 +537,14 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
       row[DataRow::Noi] = noi;
       row[DataRow::Gphi] = gphi;
 
-      int_ idx = it - calib_var.cbegin();
+      int_ idx = std::distance(calib_var.cbegin(), it);
       { //mutex lock scope
 	std::lock_guard lock(mut); 
 	x.at(idx).push_back(row);
       }
     }
   };
-  auto cutmin = [](float_ var, float_ cut) {return var > cut;};
 
-  std::string mingenen_str = "static_cast<float>(" + std::to_string(this->p.mingenen) + ")";
-  auto phi_lambda = [](const float_& phi)
-    {
-      float bound = TMath::Pi()/6.;
-      int_ f = static_cast<int_>(fabs(phi)/bound); 
-      float prod = f*bound;
-      if(phi>0) 
-	{
-	  std::cout << phi << ", " << phi-prod << std::endl;
-	  return phi-prod; 
-	}
-      else 
-	{
-	  std::cout << phi << ", " << phi+prod << std::endl;
-	  return phi+prod;
-	}
-    };
-  
   std::string en_str;
   if(p.particle == mParticleType[ParticleType::Pion])
     en_str = "en_sr"+std::to_string(ireg)+"_det"+std::to_string(idet);
@@ -556,11 +556,7 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
       std::exit(0);
     }
   ROOT::RDataFrame d(tname, fname);
-  d.Define("abs_geneta", "fabs(geneta)")
-    .Define("mingenen", mingenen_str)
-    .Define("compress_phi", phi_lambda, {"genphi"})
-    .Filter(cutmin, {"genen", "mingenen"})
-    .Foreach(fill_layer_energies, {"genen", "abs_geneta", "compress_phi", en_str.c_str(), "noise_sr3_ROI"});
+  d.Foreach(fill_layer_energies, {"genen", "abs_geneta", "compress_phi", en_str.c_str(), "noise_sr3_ROI"});
   return x;
 }
 
@@ -719,7 +715,6 @@ vec3d<float_> Calibrator::get_values_for_compensation(const std::string& tname, 
     .Define("abs_geneta", abseta_str)
     .Filter(cutmin, {"genen", "mingenen"})
     .Foreach(calculate_cglob, {"genen", "abs_geneta", "Hits.en_mip_", "Hits.subdet_", "Hits.signalRegion_", "Hits.assocROIidx_"});
-  std::cout << "END" << n_pions_per_event << std::endl;
   return values;
 }
 
@@ -789,7 +784,7 @@ void CalibratorInputParameters::define_input_parameters(const std::string& fname
 	  if( row.size()!=2 ) {row.bad_row();}
 	  this->mingenen = std::stof(row[1]);
 	}
-      else if(row[0] == "etareg_"+samples or row[0] == "etareg_central" or row[0] == "etareg_"+samples+"_fineeta")
+      else if(row[0] == "etareg_"+samples or row[0] == "etareg_central" or row[0] == "etareg_"+samples+"_"+mMethod[Method::BruteForce])
 	{
 	  if( row.size()!=4 ) {row.bad_row();}
 	  if( row[3]<2 ) {row.bad_row();}
@@ -797,31 +792,37 @@ void CalibratorInputParameters::define_input_parameters(const std::string& fname
 					     std::stoi(row[3]));
 	  if(row[0].find("central") != std::string::npos)
 	    std::copy(etareg_d.begin(), etareg_d.end(), std::back_inserter(this->etareg_central));
-	  else if(row[0].find("fineeta") != std::string::npos)
+	  else if(row[0].find(mMethod[Method::BruteForce]) != std::string::npos)
 	    std::copy(etareg_d.begin(), etareg_d.end(), std::back_inserter(this->etareg_fineeta));
 	  else
 	    std::copy(etareg_d.begin(), etareg_d.end(), std::back_inserter(this->etareg));
 	}
-      else if(row[0] == "enreg" or row[0] == "enreg_fineeta")
+      else if(row[0] == "enreg" or row[0] == "enreg_"+mMethod[Method::BruteForce])
 	{
-	  if( row.size()!=4 ) {row.bad_row();}
 	  if( row[3]<2 ) {row.bad_row();}
-	  vec1d<double_> enreg_d = linspace(std::stof(row[1]), std::stof(row[2]), 
-					    std::stoi(row[3]));
-	  if(row[0].find("fineeta") != std::string::npos)
-	    std::copy(enreg_d.begin(), enreg_d.end(), std::back_inserter(this->enreg_fineeta));
+	  vec1d<double_> enreg_d;
+	  if(row[0].find(mMethod[Method::BruteForce]) != std::string::npos)
+	    {
+	      for(uint_ i=1; i<row.size(); ++i)
+		  enreg_d.push_back(std::stof(row[i]));
+	      std::copy(enreg_d.begin(), enreg_d.end(), std::back_inserter(this->enreg_fineeta));
+	    }
 	  else
-	    std::copy(enreg_d.begin(), enreg_d.end(), std::back_inserter(this->enreg));
+	    {
+	      if( row.size()!=4 ) {row.bad_row();}
+	      enreg_d = linspace(std::stof(row[1]), std::stof(row[2]), std::stoi(row[3]));
+	      std::copy(enreg_d.begin(), enreg_d.end(), std::back_inserter(this->enreg));
+	    }
 	}
-      else if(row[0] == "phireg" or row[0] == "phireg_fineeta")
+      else if(row[0] == "phireg" or row[0] == "phireg_"+mMethod[Method::BruteForce])
 	{
 	  if( row.size()!=4 ) {row.bad_row();}
 	  if( row[3]<2 ) {row.bad_row();}
 	  vec1d<double_> phireg_d = linspace(std::stof(row[1]), std::stof(row[2]), 
 					     std::stoi(row[3]));
-	  if(row[0].find("fineeta") != std::string::npos)
+	  if(row[0].find(mMethod[Method::BruteForce]) != std::string::npos)
 	    std::copy(phireg_d.begin(), phireg_d.end(), std::back_inserter(this->phireg_fineeta));
-	  else
+	  else 
 	    std::copy(phireg_d.begin(), phireg_d.end(), std::back_inserter(this->phireg));
 	}
       else if(row[0] == "nreg") 

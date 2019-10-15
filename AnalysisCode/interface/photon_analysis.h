@@ -18,12 +18,16 @@ class PhotonsPartialWafersAnalysis
 {
  public:
   PhotonsPartialWafersAnalysis(std::string mask, std::string samples, std::string method);
-  CalibratorInputParameters get_input_parameters();  
+  const CalibratorInputParameters& get_calibrator_parameters() const;  
+  const vec1d<float_>& get_software_correction_shift() const;
+  void do_photon_calibration(const vec1d<int_>&, const bool_&, const bool_&, opt<std::string> file_opt = std::nullopt, 
+			     opt<vec1d<CalibrationType>> calib_types_opt = std::nullopt, 
+			     opt<vec2d<float_>> calib_vars_opt = std::nullopt);
 
   //functions to pass to RDataFrame methods
   std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<float_>&, const vec1d<float_>&)> define_calibrated_energy();
   std::function<vec2d<float_>(const vec2d<float_>&, const vec1d<float_>&, const vec1d<float_>&)> define_calibrated_energy_per_layer();
-  std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> define_f1();
+  std::function<vec1d<float_>(const float_&, const float_&, const vec1d<float_>&)> define_f1();
   std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> define_f2();
   std::function<bool_(const float_&, const vec1d<float_>&)> complete_showers_filter();
   std::function<vec2d<float_>(const vec2d<float_>&, const vec1d<float_>&, 
@@ -33,7 +37,6 @@ class PhotonsPartialWafersAnalysis
   std::function<vec1d<float_>(const vec1d<float_>&, const vec2d<float_>&, const vec1d<int_>&)> calculate_weight_corrected_energy(SoftwareCorrector&);
   std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> calculate_response();
   std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<int_>&)> apply_low_stats_factor(SoftwareCorrector&);
-
 
   std::string define_en = 
     "std::vector<float> en = {en_sr1_ROI, en_sr2_ROI, en_sr3_ROI};"
@@ -64,10 +67,9 @@ class PhotonsPartialWafersAnalysis
     "return en_layer;";
 
  private:
-  void do_photon_calibration(const int&, const bool_&, const bool_&);
-
-  size_t netas;
-  vec1d<mapstr<TF1*>> calibration_values;
+  vec2d<float_> calib_vars; 
+  vec1d<CalibrationType> calib_types;
+  vec1d<mapstr<TSpline3*>> calibration_values;
   std::unique_ptr<CalibratorInputParameters> params;
   std::unique_ptr<Calibrator> calibrator;
 
