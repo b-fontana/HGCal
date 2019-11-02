@@ -20,9 +20,10 @@ class PhotonsPartialWafersAnalysis
   PhotonsPartialWafersAnalysis(std::string mask, std::string samples, std::string method);
   const CalibratorInputParameters& get_calibrator_parameters() const;  
   const vec1d<float_>& get_software_correction_shift() const;
-  void do_photon_calibration(const vec1d<int_>&, const bool_&, const bool_&, opt<std::string> file_opt = std::nullopt, 
+  void do_photon_calibration(const vec1d<int_>&, const vec1d<std::string>&, const bool_&, const bool_&, 
+			     opt<std::string> file_opt = std::nullopt, 
 			     opt<vec1d<CalibrationType>> calib_types_opt = std::nullopt, 
-			     opt<vec2d<float_>> calib_vars_opt = std::nullopt);
+			     opt<vec3d<float_>> calib_vars_opt = std::nullopt);
 
   //functions to pass to RDataFrame methods
   std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<float_>&, const vec1d<float_>&)> define_calibrated_energy();
@@ -38,13 +39,13 @@ class PhotonsPartialWafersAnalysis
   std::function<vec1d<float_>(const float_&, const vec1d<float_>&)> calculate_response();
   std::function<vec1d<float_>(const vec1d<float_>&, const vec1d<int_>&)> apply_low_stats_factor(SoftwareCorrector&);
 
-  std::string define_en = 
+  std::string define_en =
     "std::vector<float> en = {en_sr1_ROI, en_sr2_ROI, en_sr3_ROI};"
     "return en;";
-  std::string define_noise = 
+  std::string define_noise =
     "std::vector<float> noise = {noise_sr1_ROI, noise_sr2_ROI, noise_sr3_ROI};"
     "return noise;";
-  std::string define_en_layer = 
+  std::string define_en_layer =
     "std::vector<float> en_layer1 = {en_sr1_layer1, en_sr1_layer2, en_sr1_layer3,"
     "en_sr1_layer4, en_sr1_layer5, en_sr1_layer6, en_sr1_layer7, en_sr1_layer8,"
     "en_sr1_layer9, en_sr1_layer10, en_sr1_layer11, en_sr1_layer12, en_sr1_layer13,"
@@ -67,7 +68,7 @@ class PhotonsPartialWafersAnalysis
     "return en_layer;";
 
  private:
-  vec2d<float_> calib_vars; 
+  vec3d<float_> calib_vars;
   vec1d<CalibrationType> calib_types;
   vec1d<mapstr<TSpline3*>> calibration_values;
   std::unique_ptr<CalibratorInputParameters> params;
@@ -78,6 +79,8 @@ class PhotonsPartialWafersAnalysis
   vec1d<float_> lshift;
   std::string corr_mode;
 
+  //methods
+  float_ average_spline_inside_window(TSpline3*, const std::pair<float_, float_>&, opt<int_> nit_opt = std::nullopt);
 };
 
 #endif //PHOTON_ANALYSIS_H

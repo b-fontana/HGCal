@@ -7,6 +7,7 @@ then
   exit 1
 fi
 
+eval set -- "$ARGS"
 echo "##### Input options: #####"
 while true;
 do
@@ -41,8 +42,24 @@ do
   esac
 done
 
+{
+#Run the macros related to each mask in parallel
 for i in {3..6}; do 
-    photons_exe --mask "$i" --samples "$SAMPLES" --method "$METHOD";
-    python plotting/uproot_resolution.py "$i" "$SAMPLES" "$METHOD" 1;
+    echo "Running mask " $i;
+    photons_exe --mask "$i" --samples "$SAMPLES" --method "$METHOD" && python plotting/uproot_resolution.py "$i" "$SAMPLES" "$METHOD" 0 && python plotting/uproot_resolution.py "$i" "$SAMPLES" "$METHOD" 1 &
 done
-python plotting/final.py "$METHOD" "$SAMPLES" "$REGION"
+
+#Wait for all jobs to complete
+pids=()
+for i in `jobs -p`; do                                                                                
+    pids+=("${i}")                                                          
+done
+for pid in ${pids[@]}; do                                                                            
+    wait ${pid}
+done
+#Run final plotting script
+echo "Producing final plot...";
+python plotting/final.py "$METHOD" "$SAMPLES" "$REGION";
+echo "Done."
+}
+exit $? #protects against run-time appends 

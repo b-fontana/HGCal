@@ -33,7 +33,7 @@ int_ main(int_ argc, char_ **argv)
 				 "nreg", "input", "input_raw", "output"};
   CalibratorInputParameters p("params_pions.csv", varnames, std::string(argv[2]), std::string(argv[4]), "", "Pion");
   Calibrator calibrator(p);
-  calibrator.create_pion_calibration_values(6, false, true);
+  //calibrator.create_pion_calibration_values(6, false, true);
   //vec1d<mapstr<TF1*>> calib = calibrator.calibration_values;
 
   return 0;

@@ -8,14 +8,18 @@ import seaborn as sns
 import params
 sns.set(style='ticks', font_scale=3)
 
+extra_str = '_new'
 figsize = (60.,30.)
 figscale = figsize[0] / figsize[1]
 method, samples, region = sys.argv[1], sys.argv[2], sys.argv[3]
 df = []
 bias, biaserr, bad75, bad50, nsamples, quart_dist = ([] for _ in range(6))
 etavalues = params.etavalues(samples)
+etameans = [(x+y)/2 for x,y in zip(etavalues[:-1],np.roll(etavalues,-1)[:-1])]
 etalabels = ['['+str(np.round(x,3))+';'+str(np.round(y,3))+'[' for x,y in zip(etavalues[:-1],np.roll(etavalues,-1)[:-1])]
-method_str = 'corr_fineeta' if method == 'fineeta' else 'corr_ed' if method == 'ed' else 'nocorr_ed'
+radiuslabels = ['\n ' + str(round(322.103*np.tan(2*np.arctan(np.exp(-etameans[i]))),2)) + ' cm' for i in range(len(etameans))]
+etalabels = [etalabels[i]+radiuslabels[i] for i in range(len(etalabels))]
+method_str = 'corr_fineeta' if method == 'fineeta' else 'corr_ed' if method == 'ed' else 'nocorr'
 for imask in range(3,7):
     with np.load('numpy_files/arrays_reg'+str(region)+'_'+str(imask)+samples+'_'+method_str+'.npz') as f:
         df.append(pd.DataFrame(f['response_eta']).transpose())
@@ -50,7 +54,7 @@ for patch in axsns.artists:
     patch.set_facecolor((r,g,b,.5))
 plt.setp(axes['main'].get_legend().get_texts(), fontsize=str(6*figscale))
 
-lin = (-0.3, len(etavalues)-2.3, len(etavalues)-1)
+lin = (-0.3, len(etavalues)-2.3 if samples=='inner' else len(etavalues)-2.3, len(etavalues)-1)
 colors = ['blue', 'orange', 'green', 'red']
 handles = []
 for imask in range(4):
@@ -67,12 +71,13 @@ for imask in range(4):
     axes['ntot'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
                       nsamples[imask], marker='s', **options)
 
-axes['main'].legend(loc='upper right' if samples=='outer' else 'upper left')
+axes['main'].errorbar(np.NaN, np.NaN, marker='D', color='grey', label='outliers', ms=13) #add legend entry for outliers
+axes['main'].legend(loc='upper right' if samples=='outer' else 'upper left', title='Masks')
 axes['main'].set_ylabel(r'Response: $(E_{reco}-E_{gen})/E_{gen}$',
                         fontsize=15*figscale)
-axes['main'].set_ylim([-1.1,2.5])
+axes['main'].set_ylim([-1.1,2.])
 axes['ntot'].set_ylabel(r'$N_{total}$', fontsize=15*figscale)
-axes['ntot'].set_xlabel(r'$|\eta|$', fontsize=15*figscale)
+axes['ntot'].set_xlabel(r'$|\eta|$, radius of layer #1', fontsize=15*figscale, labelpad=18*figscale)
 axes['ntot'].grid(linewidth=3)
 axes['ntot'].set_yticks([350,2000,3000] if samples=='inner' else [200,10000,20000])
 axes['ntot'].set_ylim([0,3550] if samples=='inner' else [0,30000])
@@ -85,8 +90,7 @@ radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
 plt.text(.815, texth, 'Integration cylinder radius: '+radius[region], transform=axes['main'].transAxes)
 methodmap = dict({'ed':'Shower reconstruction', 'fineeta':'Brute force calibration', 'nocorr':'No Correction'})
 plt.text(.34, texth, 'Software correction method: '+methodmap[method], transform=axes['main'].transAxes)
-plt.savefig('figs/final_'+str(region)+'_'+samples+'_'+method+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/final_'+str(region)+'_'+samples+'_'+method+'.png')
+plt.savefig('/eos/user/b/bfontana/www/PartialWafers/'+samples+'/final_reg'+str(region)+'_'+samples+'_'+method+extra_str+'.png')
 
 ########################################################################
 ########################################################################
@@ -98,9 +102,10 @@ axes = dict({'res':ax[0], 'bad':ax[1]})
 for imask in range(4):
     axes['bad'].set_xticks([x for x in range(len(etavalues)-1)])
     axes['bad'].set_xticklabels(etalabels)
-    for i in [x for x in np.linspace(1.5,12.5,len(etavalues)-2)-1]:
-        axes['bad'].plot([i, i], [0, 0.55], linewidth=2, color='grey', linestyle=(0, (5,10)))
-        axes['res'].plot([i, i], [0.05, 1.35], linewidth=2, color='grey', linestyle=(0, (5,10)))
+    m = 12.5 if samples=='inner' else 13.5
+    for i in [x for x in np.linspace(1.5,m,len(etavalues)-2)-1]:
+        axes['bad'].plot([i, i], [0, 0.55] if samples=='inner' else [0, 0.95], linewidth=2, color='grey', linestyle=(0, (5,10)))
+        axes['res'].plot([i, i], [0.05, 1.35] if samples=='inner' else [0.05, 1.56], linewidth=2, color='grey', linestyle=(0, (5,10)))
     incr = imask*0.2
     imask2 = imask+3
     options = dict(color=colors[imask], linestyle='', 
@@ -119,7 +124,7 @@ for imask in range(4):
                          bad50[imask], marker='v', **options)
 
     axes['res'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
-                     quart_dist[imask], marker='s', label='mask '+str(imask2), **options)
+                     quart_dist[imask], marker='s', label=str(imask2), **options)
 
 
 #manually change the color of the legend
@@ -128,13 +133,13 @@ for h in handles:
 axes['bad'].legend(handles=handles, fontsize=14*figscale)
 axes['bad'].set_ylabel(r'$\frac{N_{\Delta E/E<k}}{N_{total}}$',
                  fontsize=25*figscale, labelpad=50)
-axes['bad'].set_yticks([0.,.1,.2,.3,.4,.5] if samples=='inner' else [0.,0.3,0.6])
+axes['bad'].set_yticks([0.,.1,.2,.3,.4,.5] if samples=='inner' else [0.,0.3,0.6,0.9])
 axes['bad'].set_ylim([-0.03,0.6] if samples=='inner' else [-0.03,0.95])
 axes['bad'].grid(linewidth=3)
-axes['bad'].set_xlabel(r'$|\eta|$', fontsize=18*figscale)
+axes['bad'].set_xlabel(r'$|\eta|$, radius of layer #1', fontsize=18*figscale, labelpad=18*figscale)
 
-axes['res'].set_ylim([-0.1,1.5] if samples=='inner' else [-0.1,1.5])
-axes['res'].set_ylabel(r'$|3^{\mathrm{rd}}\mathrm{Q}-1^{\mathrm{st}}\mathrm{Q}|$', fontsize=18*figscale, labelpad=50)
+axes['res'].set_ylim([-0.1,1.5] if samples=='inner' else [-0.1,1.6])
+axes['res'].set_ylabel(r'Resolution ($|3^{\mathrm{rd}}\mathrm{Q}-1^{\mathrm{st}}\mathrm{Q}|$)', fontsize=18*figscale, labelpad=50)
 axes['res'].grid(linewidth=3)
 axes['res'].legend(loc='upper right' if samples=='outer' else 'upper left')
 
@@ -148,5 +153,4 @@ radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
 plt.text(.815, texth, 'Integration cylinder radius: '+radius[region], transform=axes['res'].transAxes)
 methodmap = dict({'ed':'Shower reconstruction', 'fineeta':'Brute force calibration', 'nocorr':'No Correction'})
 plt.text(.34, texth, 'Software correction method: '+methodmap[method], transform=axes['res'].transAxes)
-plt.savefig('figs/final2_'+str(region)+'_'+samples+'_'+method+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/final2_'+str(region)+'_'+samples+'_'+method+'.png')
+plt.savefig('/eos/user/b/bfontana/www/PartialWafers/'+samples+'/final2_reg'+str(region)+'_'+samples+'_'+method+extra_str+'.png')

@@ -4,7 +4,9 @@
 #include <iostream>
 #include <string>
 #include <map>
-#include "TH1.h"
+#include <algorithm> //std::replace
+#include <iomanip> //std::setprecision
+#include <sstream>
 #include "TH2.h"
 #include "TGraphAsymmErrors.h"
 
@@ -59,22 +61,21 @@ void check_key(const std::string& k, const mapstr<V>& m) {
 }
 
 template<typename T>
-std::vector<double> linspace(T start_in, T end_in, int num_in)
+std::vector<T> linspace(T start_in, T end_in, int num_in)
 {
-  std::vector<double> linspaced;
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
+  std::vector<T> linspaced;
+  T start = static_cast<T>(start_in);
+  T end = static_cast<T>(end_in);
 
-  if (num == 0) { return linspaced; }
-  if (num == 1) 
+  if (num_in == 0) { return linspaced; }
+  if (num_in == 1) 
     {
       linspaced.push_back(start);
       return linspaced;
     }
   
-  double delta = (end - start) / (num - 1);
-  for(int i=0; i < num-1; ++i)
+  T delta = (end - start) / (num_in - 1);
+  for(int i=0; i < num_in-1; ++i)
     {
       linspaced.push_back(start + delta * i);
     }
@@ -82,6 +83,14 @@ std::vector<double> linspace(T start_in, T end_in, int num_in)
   return linspaced;
 }
 
+template<typename T>
+std::string round_to_string(T val, int precision=3) {
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(precision) << val;
+  std::string str = stream.str();
+  std::replace(str.begin(), str.end(), '.', 'p');
+  return str;
+}
+
 TGraphAsymmErrors* build_median_profile(TH2D* h);
-std::string etastr(std::string);
 #endif //UTILS_H

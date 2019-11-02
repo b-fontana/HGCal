@@ -45,5 +45,4 @@ for ireg in range(nreg):
 ax[1,1].set_xlabel('Layers', fontsize=str(12*figscale), labelpad=1.7*figscale)
 ax[0,0].set_ylabel('Fraction of deposited energy', fontsize=str(12*figscale), labelpad=1.7*figscale)
 ax[1,0].set_ylabel('Weights', fontsize=str(12*figscale), labelpad=1.7*figscale)
-plt.savefig('figs/weights_'+str(mask)+samples+'.png')
-plt.savefig('/eos/user/b/bfontana/www/ResolutionStudies/mask'+str(mask)+'/weights_'+str(mask)+samples+'.png')
+plt.savefig('/eos/user/b/bfontana/www/PartialWafers/'+samples+'/mask'+str(mask)+'/weights_'+str(mask)+samples+'.png')

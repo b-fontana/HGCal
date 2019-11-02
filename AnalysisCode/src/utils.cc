@@ -24,7 +24,3 @@ TGraphAsymmErrors* build_median_profile(TH2D* h) {
   }
   return medianGr;
 }
-
-std::string etastr(std::string s) {
-  return s.replace(1,1,"p").erase(5,10);
-}

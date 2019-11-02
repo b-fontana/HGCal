@@ -58,7 +58,26 @@ class vector3d {
   vec1d<T> data;
 };
 
+template <typename T> 
+using opt = std::optional<T>;
+
+template <typename T, typename U> 
+  using umap = std::unordered_map<T,U>;
+
 template <typename T>
-using mapstr = std::unordered_map<std::string, T>;
+using mapstr = umap<std::string, T>;
+
+enum class ParticleType {Photon, Pion, NTypes};
+extern umap<ParticleType, std::string> mParticleType;
+enum class DetectorRegion {Inner, Central, Outer, NRegions};
+extern umap<DetectorRegion, std::string> mDetectorRegion;
+enum class Method {ShowerLeakage, BruteForce};
+extern umap<Method, std::string> mMethod;
+
+template <typename E>
+constexpr auto to_underlying(E e) noexcept
+{
+    return static_cast<std::underlying_type_t<E>>(e);
+}
 
 #endif //TYPES_H
