@@ -8,7 +8,7 @@ import seaborn as sns
 import params
 sns.set(style='ticks', font_scale=3)
 
-extra_str = '_new'
+extra_str = ''
 figsize = (60.,30.)
 figscale = figsize[0] / figsize[1]
 method, samples, region = sys.argv[1], sys.argv[2], sys.argv[3]

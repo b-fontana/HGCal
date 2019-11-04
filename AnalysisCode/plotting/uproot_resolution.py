@@ -8,7 +8,7 @@ warnings.simplefilter('error', OptimizeWarning)
 import uproot as up
 import params
 
-extra_str = '_new'
+extra_str = ''
 nreg = 3
 mask = sys.argv[1]
 samples = sys.argv[2]

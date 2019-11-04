@@ -28,14 +28,6 @@ do
       fi
       shift 2;;
 
-    --region)
-      if [ -n "$2" ];
-      then
-        REGION="${2}";
-        echo "Region: ${2}";
-      fi
-      shift 2;;
-
     --)
       shift
       break;;
@@ -59,7 +51,9 @@ for pid in ${pids[@]}; do
 done
 #Run final plotting script
 echo "Producing final plot...";
-python plotting/final.py "$METHOD" "$SAMPLES" "$REGION";
+python plotting/final.py "$METHOD" "$SAMPLES" 1 &
+python plotting/final.py "$METHOD" "$SAMPLES" 2 &
+python plotting/final.py "$METHOD" "$SAMPLES" 3 &
 echo "Done."
 }
 exit $? #protects against run-time appends 

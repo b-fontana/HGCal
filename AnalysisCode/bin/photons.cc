@@ -41,7 +41,6 @@ int_ main(int_ argc, char_ **argv) {
   CalibratorInputParameters p = ana.get_calibrator_parameters();
   std::string finalname = "root_files/final_" + std::to_string(p.mask) + std::string(p.samples)+"_"+std::string(p.method)+".root";
   std::string slimmedfile = "root_files/slimmedF_"+std::string(argv[2])+std::string(argv[4])+"_"+std::string(argv[6]);
-
   std::string mingenen_str = "static_cast<float>(" + std::to_string(p.mingenen) + ")";
   auto cutmin = [](float_ var, float_ cut) {return var > cut;};
   auto phi_lambda = [](const float_& phi)
@@ -73,7 +72,7 @@ int_ main(int_ argc, char_ **argv) {
   //perform the calibration
   ana.do_photon_calibration(nq, initial_en_calib_str, false, true, slimmedfile+".root", types, vars);
 
-  ROOT::EnableImplicitMT(std::thread::hardware_concurrency());
+  //ROOT::EnableImplicitMT(std::thread::hardware_concurrency());
   ROOT::RDataFrame d1("data", slimmedfile+".root");
   auto df = d1.Define("en", ana.define_en)
     .Define("noise", ana.define_noise)
@@ -244,7 +243,6 @@ int_ main(int_ argc, char_ **argv) {
   //////////////////////////////////////////////////
   else if(std::string(argv[6]) == mMethod[Method::BruteForce])
     {
-      std::cout << "check0" << std::endl;
       const vec1d<std::string> en_calib_str = {"en_sr1_calib", "en_sr2_calib", "en_sr3_calib"};
       ROOT::RDataFrame d2("data", slimmedfile+"2.root");
       auto df = d2.Define(en_calib_str[0].c_str(), "float e = en_calib[0]; return e;")
@@ -256,11 +254,11 @@ int_ main(int_ argc, char_ **argv) {
 	.Snapshot("data", slimmedfile+"3.root",
 		  {"genen", "noise", "abs_geneta", "compress_phi", "en_sr1_ROI", "en_sr2_ROI", "en_sr3_ROI", "en",
 		   en_calib_str[0].c_str(), en_calib_str[1].c_str(), en_calib_str[2].c_str(), "en_calib", "noise_sr3_ROI"});
-      vec1d<CalibrationType> types_fineeta = {CalibrationType::GenPhi, CalibrationType::GenEta, CalibrationType::RecoEn};
-      vec3d<float_> vars_fineeta = {{p.phireg_fineeta[0], p.phireg_fineeta[1], p.phireg_fineeta[2]},
-				    {p.etareg_fineeta[0], p.etareg_fineeta[1], p.etareg_fineeta[2]},
+      vec1d<CalibrationType> types_fineeta = {CalibrationType::GenEta, CalibrationType::RecoEn};
+      vec3d<float_> vars_fineeta = {{p.etareg_fineeta[0], p.etareg_fineeta[1], p.etareg_fineeta[2]},
 				    {p.enreg_fineeta[0], p.enreg_fineeta[1], p.enreg_fineeta[2]}};
-      const vec1d<int_> nq_fineeta = {10, 8, 6};
+      const vec1d<int_> nq_fineeta = {6, 6};
+      
       ana.do_photon_calibration(nq_fineeta, en_calib_str, false, true, slimmedfile+"3.root", types_fineeta, vars_fineeta);
       ROOT::RDataFrame dfinal("data", slimmedfile+"3.root");
       dfinal.Define("deltaE", ana.calculate_response(), {"genen", "en_calib"})

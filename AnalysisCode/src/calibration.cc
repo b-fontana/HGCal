@@ -1,4 +1,4 @@
-include "UserCode/AnalysisCode/interface/calibration.h"
+#include "UserCode/AnalysisCode/interface/calibration.h"
 
 Calibrator::Calibrator(const CalibratorInputParameters& p_): p(p_)
 {
@@ -374,6 +374,7 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const s
     }
   else
     calib_vars = calib_vars_opt.value();
+
   assert(calib_types.size() == calib_vars.size());
   assert(nq.size() == calib_vars.size());
   umap<CalibrationType, std::tuple< DataRow, std::string, std::string> > type_table = {
@@ -397,6 +398,7 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const s
 	uint_ type_idx = std::distance(calib_types.cbegin(), it_type);
 	vec3d<float_> x = Calibrator::get_values_for_calibration(file, "data", en_calib_str[ireg-1], allowed_calibration_window,
 								 *it_type, calib_vars[type_idx][ireg-1]);
+
 	for(auto it = calib_vars[type_idx][ireg-1].cbegin(); it!=calib_vars[type_idx][ireg-1].cend()-1; ++it)
 	  {
 	    uint_ idx = std::distance(calib_vars[type_idx][ireg-1].cbegin(), it);
@@ -407,7 +409,6 @@ void Calibrator::create_photon_calibration_values(const vec1d<int_>& nq, const s
 	    std::string idstr = "sr" + std::to_string(ireg) + "from" + str1 + "to" + str2;
 
 	    uint_ ss = x[idx].size();
-	    //if(*it_type == CalibrationType::GenEta)
 	    std::cout << ss << ", " << *it << ", " << *(it+1) << std::endl;
 	    double_ probs[nq[type_idx]+1];
 	    for(int_ j=0; j<nq[type_idx]+1; ++j)
@@ -530,7 +531,7 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
     calib_var = type_table[calib_type];
   else
     calib_var = calib_var_opt.value();
-
+  assert(calib_var.size() != 0);
   vec3d<float_> x;
   //fill energies vector with 2d vectors, one per etaregion considered in the calibration
   for(uint_ i=0; i<calib_var.size()-1; ++i)
@@ -538,7 +539,7 @@ vec3d<float_> Calibrator::get_values_for_calibration(const std::string& fname, c
       vec2d<float_> var_row;
       x.push_back(var_row);
     }
-
+  
   std::mutex mut;
   auto fill_layer_energies = [&](const float& gen, const float& geta, const float& gphi,
 				 const float& en, const float& noi)

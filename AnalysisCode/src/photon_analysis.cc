@@ -6,9 +6,9 @@ PhotonsPartialWafersAnalysis::PhotonsPartialWafersAnalysis(std::string mask, std
   if(method == mMethod[Method::BruteForce])
     varnames = 
       {"mingenen", "nreg", "input",
-       "phireg_fineeta_sr1_mask"+mask, "phireg_fineeta_sr2_mask3", "phireg_fineeta_sr3_mask3",
-       "etareg_"+samples+"_fineeta_sr1_mask"+mask, "etareg_"+samples+"_fineeta_sr2_mask3", "etareg_"+samples+"_fineeta_sr3_mask3",
-       "enreg_fineeta_sr1_mask"+mask, "enreg_fineeta_sr2_mask3", "enreg_fineeta_sr3_mask3"};
+       "phireg_fineeta_sr1_mask"+mask, "phireg_fineeta_sr2_mask"+mask, "phireg_fineeta_sr3_mask"+mask,
+       "etareg_"+samples+"_fineeta_sr1_mask"+mask, "etareg_"+samples+"_fineeta_sr2_mask"+mask, "etareg_"+samples+"_fineeta_sr3_mask"+mask,
+       "enreg_fineeta_sr1_mask"+mask, "enreg_fineeta_sr2_mask"+mask, "enreg_fineeta_sr3_mask"+mask};
   else if(method == mMethod[Method::ShowerLeakage])
     varnames = {"mingenen", "etareg_"+samples, "nreg", "nlayers", "input", "bckgcuts_"+samples};
   else
