@@ -5,16 +5,16 @@ import pandas as pd
 
 from bokeh.io import output_file, show
 from bokeh.plotting import figure
-#output_file(os.path.basename(__file__)+'.html')
 from bokeh.layouts import column
 from bokeh.models import CustomJS, ColumnDataSource
 from bokeh.models.widgets import CheckboxButtonGroup, Slider
 from bokeh.layouts import gridplot, column, row
 
 samples = sys.argv[1]
+output_file('final_interactive_'+samples+'.html')
 start = 2.7 if samples == 'inner' else 1.45
 end = 3 if samples == 'inner' else 1.62
-y_range = (-1.5, 2.)
+y_range = (-1.5, 1.5)
 x_range = (-1, 6.5)
 colors = ['blue', 'darkorange', 'forestgreen', 'crimson']
 colors_diamonds = ['royalblue', 'khaki', 'yellowgreen', 'red']
@@ -28,22 +28,23 @@ def create_final_box_plot(method, region):
             df[-1].columns = ['response', 'eta']
 
     #data sources
-    source1 = ColumnDataSource(data=dict(x_mask3=df[0].eta, x_mask4=df[1].eta, x_mask5=df[2].eta, x_mask6=df[3].eta, 
-                                         y_mask3=df[0].response, y_mask4=df[1].response, y_mask5=df[2].response, y_mask6=df[3].response,
-                                         c_mask3=[colors[0]]*df[0].shape[0], c_mask4=[colors[1]]*df[1].shape[0], c_mask5=[colors[2]]*df[2].shape[0], c_mask6=[colors[3]]*df[3].shape[0]))
-    source1_v2 = ColumnDataSource(data=dict(x_mask3=df[0].eta, x_mask4=df[1].eta, x_mask5=df[2].eta, x_mask6=df[3].eta,
-                                            y_mask3=df[0].response, y_mask4=df[1].response, y_mask5=df[2].response, y_mask6=df[3].response,
-                                            c_mask3=[colors[0]]*df[0].shape[0], c_mask4=[colors[1]]*df[1].shape[0], c_mask5=[colors[2]]*df[2].shape[0], c_mask6=[colors[3]]*df[3].shape[0]))
+    data_limit = 64800
+    source1 = ColumnDataSource(data=dict(x_mask3=df[0].eta[:data_limit], x_mask4=df[1].eta[:data_limit], x_mask5=df[2].eta[:data_limit], x_mask6=df[3].eta[:data_limit], 
+                                         y_mask3=df[0].response[:data_limit], y_mask4=df[1].response[:data_limit], y_mask5=df[2].response[:data_limit], y_mask6=df[3].response[:data_limit],
+                                         c_mask3=[colors[0]]*data_limit, c_mask4=[colors[1]]*data_limit, c_mask5=[colors[2]]*data_limit, c_mask6=[colors[3]]*data_limit))
+    source1_v2 = ColumnDataSource(data=dict(x_mask3=df[0].eta[:data_limit], x_mask4=df[1].eta[:data_limit], x_mask5=df[2].eta[:data_limit], x_mask6=df[3].eta[:data_limit],
+                                            y_mask3=df[0].response[:data_limit], y_mask4=df[1].response[:data_limit], y_mask5=df[2].response[:data_limit], y_mask6=df[3].response[:data_limit],
+                                            c_mask3=[colors[0]]*data_limit, c_mask4=[colors[1]]*data_limit, c_mask5=[colors[2]]*data_limit, c_mask6=[colors[3]]*data_limit))
     source_vlines = ColumnDataSource(data=dict(etamin=[start], etamax=[end]))
-    source_outliers = ColumnDataSource(data=dict(x_mask3=[1]*df[0].shape[0], x_mask4=[2]*df[1].shape[0], x_mask5=[3]*df[2].shape[0], x_mask6=[4]*df[3].shape[0], 
-                                                 y_mask3=df[0].response, y_mask4=df[1].response, y_mask5=df[2].response, y_mask6=df[3].response))
+    source_outliers = ColumnDataSource(data=dict(x_mask3=[1]*data_limit, x_mask4=[2]*data_limit, x_mask5=[3]*data_limit, x_mask6=[4]*data_limit, 
+                                                 y_mask3=df[0].response[:data_limit]+100., y_mask4=df[1].response[:data_limit]+100., y_mask5=df[2].response[:data_limit]+100., y_mask6=df[3].response[:data_limit]+100.))
     source2 = ColumnDataSource(data=dict(x_mask3=[1],x_mask4=[2],x_mask5=[3],x_mask6=[4], 
-                                         y1_mask3=[-.25],y1_mask4=[-.25],y1_mask5=[-.25],y1_mask6=[-.25],
-                                         y2_mask3=[.25], y2_mask4=[.25], y2_mask5=[.25], y2_mask6=[.25],
-                                         height1_mask3=[.5],height1_mask4=[.5],height1_mask5=[.5],height1_mask6=[.5],
-                                         height2_mask3=[.5],height2_mask4=[.5],height2_mask5=[.5],height2_mask6=[.5],
-                                         q1_mask3=[-.4],q1_mask4=[-.4],q1_mask5=[-.4],q1_mask6=[-.4], 
-                                         q3_mask3=[-.4],q3_mask4=[-.4],q3_mask5=[-.4],q3_mask6=[-.4], 
+                                         y1_mask3=[0.],y1_mask4=[0.],y1_mask5=[0.],y1_mask6=[0.],
+                                         y2_mask3=[0.], y2_mask4=[0.], y2_mask5=[0.], y2_mask6=[0.],
+                                         height1_mask3=[.6],height1_mask4=[.6],height1_mask5=[.6],height1_mask6=[.6],
+                                         height2_mask3=[.6],height2_mask4=[.6],height2_mask5=[.6],height2_mask6=[.6],
+                                         q1_mask3=[-.25],q1_mask4=[-.25],q1_mask5=[-.25],q1_mask6=[-.25], 
+                                         q3_mask3=[-.25],q3_mask4=[-.25],q3_mask5=[-.25],q3_mask6=[-.25], 
                                          upper_mask3=[-.6],upper_mask4=[-.6],upper_mask5=[-.6],upper_mask6=[-.6],
                                          lower_mask3=[.6], lower_mask4=[.6], lower_mask5=[.6], lower_mask6=[.6]))
 
@@ -58,8 +59,8 @@ def create_final_box_plot(method, region):
     #2nd figure
     plot2_options = dict(plot_height=300, plot_width=500, x_range=x_range, y_range=(y_range[0]-0.3,y_range[1]+0.3), tools="wheel_zoom,box_zoom,pan,reset", output_backend="webgl")
     radius = dict({'1':'1.3cm', '2':'2.6cm', '3':'5.3cm'})
-    methoddict = dict({'nocorr':'No correction', 'corr_ed':'Shower leakage', 'corr_fineeta':'Brute force calibration'})
-    p2 = figure(title="Signal integration radius: "+radius[region]+'            Method: '+methoddict[method], **plot2_options)
+    methoddict = dict({'nocorr':'No correction', 'corr_ed':'Shower leakage', 'corr_fineeta':'Brute force'})
+    p2 = figure(title="Signal integration radius: "+radius[region]+'        Method: '+methoddict[method], **plot2_options)
     p2.xaxis.visible = False
     box_options = dict(line_color='black', line_width=2, source=source2)
     for imask in masks:
@@ -364,7 +365,7 @@ def create_final_box_plot(method, region):
             source_vlines.change.emit();
             source_outliers.change.emit();
         """)
-    slider = Slider(start=start, end=end, value=start, step=.0001, title="Pseudorapidity (lower bin value)")
+    slider = Slider(start=start, end=end, value=start, step=.0001, title="Pseudorapidity (left bin edge)")
     slider.js_on_change('value', callback)
     return slider, p2
 
@@ -389,7 +390,7 @@ boxes3 = [box1c, box2c, box3c]
 col1 = column(slider1a)
 col2 = column(slider1b)
 col3 = column(slider1c)
-checkbox = CheckboxButtonGroup(labels=["No correction", "Shower leakage method", "Baseline calibration"], active=[])
+checkbox = CheckboxButtonGroup(labels=["No correction", "Shower leakage", "Brute force"], active=[])
 checkbox_sr = CheckboxButtonGroup(labels=["1.3cm", "2.6cm", "5.3cm"], active=[])
 checkbox_callback = CustomJS(args=dict(sliders1=sliders1, sliders2=sliders2, sliders3=sliders3, boxes1=boxes1, boxes2=boxes2, boxes3=boxes3, 
                                        col1=col1, col2=col2, col3=col3, checkbox=checkbox, checkbox_sr=checkbox_sr), code="""

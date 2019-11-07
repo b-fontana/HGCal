@@ -1,12 +1,14 @@
-import sys
+import sys, os
 import copy
+import csv
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import seaborn as sns
-import params
 sns.set(style='ticks', font_scale=3)
+import params
+from dump_data import dump_tcl_resolution_formula
 
 extra_str = ''
 figsize = (60.,30.)
@@ -125,7 +127,6 @@ for imask in range(4):
 
     axes['res'].plot(np.linspace(lin[0]+incr,lin[1]+incr,lin[2]), 
                      quart_dist[imask], marker='s', label=str(imask2), **options)
-
 
 #manually change the color of the legend
 for h in handles:
