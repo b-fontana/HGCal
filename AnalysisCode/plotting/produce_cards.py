@@ -52,7 +52,11 @@ card_etavals = np.concatenate((etavalues, card_etavals), axis=0)
 dump_path = '/afs/cern.ch/user/b/bfontana/CMSSW_10_6_0/src/UserCode/DelphesNtuplizer/delphes/cards/'
 if not os.path.isdir(dump_path):
     raise ValueError('Wrong path.')
-dump_tcl_resolution_formula(dump_path+'photonEnergyResolution', card_etavals, quart_dist, bias)
+#dump_tcl_resolution_formula(dump_path+'photonEnergyResolution', card_etavals, quart_dist, bias)
+nan_array = np.empty((4,1))
+nan_array.fill(np.nan)
+zeros = np.concatenate( (np.zeros((4,14)), nan_array, np.zeros((4,13))), axis=1 )
+dump_tcl_resolution_formula(dump_path+'photonEnergyResolution', card_etavals, quart_dist, zeros)
 
 """
 def save_to_csv(name, bins, res, biases):
