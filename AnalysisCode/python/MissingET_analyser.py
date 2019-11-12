@@ -81,7 +81,7 @@ def main():
     parser.add_option('--maxEvents',          
                       dest='maxEvts',
                       help='max number of events [%default]',
-                      default=1000,
+                      default=999999,
                       type=int)
     (opt, args) = parser.parse_args()
 

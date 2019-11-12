@@ -11,14 +11,18 @@ def get_histograms(files, variables):
     return h
 
 def stack_histograms(h, name, legends):
-    colors = [ROOT.kBlue, ROOT.kRed, ROOT.kViolet, ROOT.kGreen]
+    colors = [ROOT.kBlue, ROOT.kRed, ROOT.kYellow, ROOT.kGreen]
     ylow = [0.51, 0.51, 0.01, 0.01]
     yup = [0.99, 0.99, 0.49, 0.49]
     xlow = [0.01, 0.51, 0.01, 0.51]
     xup = [0.49, 0.99, 0.49, 0.99]
     assert(len(h) == len(colors)+1)
 
-    leg = [ROOT.TLegend(0.12,0.65,0.28,0.88) for _ in range(len(h[0]))]
+    coords1 = [0.55, 0.12, 0.12, 0.12]
+    coords2 = [0.65, 0.12, 0.65, 0.65]
+    coords3 = [0.71, 0.28, 0.28, 0.28]
+    coords4 = [0.88, 0.35, 0.88, 0.88]
+    leg = [ROOT.TLegend(coords1[i],coords2[i],coords3[i],coords4[i]) for i in range(len(h[0]))]
     c = ROOT.TCanvas('c', 'c', 1500, 1300)
     for ivar in range(len(h[0])):
         c.cd()
@@ -45,7 +49,8 @@ def main():
                       type='string')
     (opt, args) = parser.parse_args()
 
-    inFiles = ['outMET_Mask3.root', 'outMET_Mask4.root', 'outMET_Mask5.root', 'outMET_Mask6.root', 'outMET_NoMask.root']
+    #inFiles = ['outMET_Mask3.root', 'outMET_Mask4.root', 'outMET_Mask5.root', 'outMET_Mask6.root', 'outMET_NoMask.root']
+    inFiles = ['outMET_Mask3_v2.root', 'outMET_Mask4_v2.root', 'outMET_Mask5_v2.root', 'outMET_Mask6_v2.root', 'outMET_NoMask_v2.root']
     files = [ROOT.TFile.Open(f, 'READ') for f in inFiles]
     variables = ['MET', 'METPhi', 'Upar', 'Uperp']
 
