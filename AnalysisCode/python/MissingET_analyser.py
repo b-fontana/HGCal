@@ -2,6 +2,7 @@
 import ROOT
 import sys
 import optparse
+import numpy as np
 
 #ROOT.gSystem.Load('../Delphes/delphes/libDelphesNoFastJet') 
 ROOT.gSystem.Load('../Delphes/delphes/libDelphes') 
@@ -13,11 +14,13 @@ except:
     pass
 
 params = {
-    "ZBosonMassRange": [106, 76],
+    "ZBosonMassRange": [76, 106],
     "plotMETRange": [-2, 25],
     "plotMETPhiRange": [-4*ROOT.TMath.Pi()/3, 4*ROOT.TMath.Pi()/3],
     "plotUparRange": [-20, 20],
     "plotUperpRange": [-20, 20],
+    "plotZptRange": [0, 120],
+    "plotZetaRange": [-4*ROOT.TMath.Pi()/3, 4*ROOT.TMath.Pi()/3],
     "plotEtaRange": [-5, 5],
     "plotPhiRange": [-5, 5],
     "plotMassRange": [0, 500],
@@ -27,6 +30,12 @@ params = {
 
 pdgmass = {
     'muon': 0.105658,
+    'electron': 0.000511
+}
+
+nDaughters = {
+    'muon': 2,
+    'electron': 2
 }
 
 def createHist(obj, varname):
@@ -52,6 +61,21 @@ def createHist(obj, varname):
     h.Sumw2()
     return h
 
+def createProf(obj, varname, bins):
+    prof = None
+    if 'pt' in varname:
+        prof = ROOT.TProfile(varname+'_'+obj, "", len(bins)-1, bins)
+        prof.GetXaxis().SetTitle("p_{T}(Z) [GeV]")
+        prof.GetYaxis().SetTitle('<'+varname[3:]+'>')
+    elif 'eta' in varname:
+        prof = ROOT.TProfile(varname+'_'+obj, "", len(bins)-1, bins)
+        prof.GetXaxis().SetTitle("#eta(Z)")
+        prof.GetYaxis().SetTitle('<'+varname[4:]+'>')
+    if prof==None:
+        raise ValueError('No profile was created.')
+    return prof
+
+"""
 def check_size(event):
     sizes = {'muon': 2}
     for k,v in sizes.items():
@@ -61,9 +85,10 @@ def check_size(event):
         else:
             raise ValueError('Muons only!')
     return 0
+"""
 
 def main():
-    objects = ['muon'] 
+    objects = ['muon', 'electron'] 
     variables = ['MET', 'METPhi', 'Upar', 'Uperp']
 
     usage = 'usage: %prog [options]'
@@ -93,14 +118,20 @@ def main():
 
     tot_nevents = 0
     tot_muons = 0
+    tot_electrons = 0
 
     muon_mothers = []
 
     outputF = ROOT.TFile(opt.outFile, "RECREATE")
     hists = {} 
+    profs = {}
+    pt_bins = np.array([0.,2.5,5.,7.5,10.,15.,20.,25.,30.,35.,40.,50.,60.,70.,80.,90.,120.])
+    eta_bins = np.array([-8*ROOT.TMath.Pi()/6, -7*ROOT.TMath.Pi()/6, -ROOT.TMath.Pi(), -5*ROOT.TMath.Pi()/6, -4*ROOT.TMath.Pi()/6, -ROOT.TMath.Pi()/2, -2*ROOT.TMath.Pi()/6, -ROOT.TMath.Pi()/6, 0., ROOT.TMath.Pi()/6, 2*ROOT.TMath.Pi()/6, ROOT.TMath.Pi()/2, 4*ROOT.TMath.Pi()/6, 5*ROOT.TMath.Pi()/6, ROOT.TMath.Pi(), 7*ROOT.TMath.Pi()/6, 8*ROOT.TMath.Pi()/6])
     for hname in variables:
         for obj in objects:
-            hists[hname] = createHist(obj, hname)
+            hists[hname+'_'+obj] = createHist(obj, hname)
+            profs['pt'+'_'+hname+'_'+obj] = createProf(obj, 'pt'+'_'+hname, pt_bins)
+            profs['eta'+'_'+hname+'_'+obj] = createProf(obj, 'eta'+'_'+hname, eta_bins)
 
     for entry,event in enumerate(ntuple):
         if maxEvents > 0 and entry >= maxEvents:
@@ -109,53 +140,68 @@ def main():
             print('... processed {} events ...'.format(entry+1))
 
         tot_nevents += 1
-
+        
+        """
         if check_size(event) == 1:
             continue
+        """
 
         ######################################
         mother = dict()
-        #for/else for applying cuts#
         for obj in objects:
             if obj == 'muon':
                 event_obj = event.Muon
                 tot_muons += event.Muon_size
+            elif obj == 'electron':
+                event_obj = event.Electron
+                tot_electrons += event.Electron_size
             else:
-                raise ValueError('Muons only!')
+                raise ValueError('Muons and eletrons only!')
 
             obj_vectors = []        
             for p in event_obj:
                 obj_vectors.append( ROOT.Math.PtEtaPhiMVector(p.PT, p.Eta, p.Phi, pdgmass[obj]) )
-            if len(obj_vectors) != 2:
-                break;
 
-            mother[obj] = obj_vectors[0]
-            for vector in obj_vectors[1:]:
-                mother[obj] += vector
-
-            if mother[obj].M() < params["ZBosonMassRange"][0] or mother[obj].M() > params["ZBosonMassRange"][1]:
-                break
-
-        else:
-            continue
+            #reconstruct mother particle if the number of daughters is correct
+            if len(obj_vectors) == nDaughters[obj]:
+                mother[obj] = obj_vectors[0]
+                for vector in obj_vectors[1:]:
+                    mother[obj] += vector
         ######################################
 
-        #one single value per event
-        for ev in event.MissingET:
-            phi_par = ROOT.TVector2.Phi_mpi_pi( ev.Phi - (mother['muon'].Phi() + ROOT.TMath.Pi()) )
-            hists['MET'].Fill(ev.MET)
-            hists['METPhi'].Fill(ev.Phi)
-            hists['Upar'].Fill(ev.MET * ROOT.TMath.Cos(phi_par))
-            hists['Uperp'].Fill(ev.MET * ROOT.TMath.Sin(phi_par))
-            
-        # end of one event
+        for obj in objects:
+            if obj not in mother: #the mother was not reconstructed for this object
+                continue
+            if mother[obj].M() > params["ZBosonMassRange"][0] and mother[obj].M() < params["ZBosonMassRange"][1]:
+                for ev in event.MissingET: #one single value per event
+                    phi_par = ROOT.TVector2.Phi_mpi_pi( ev.Phi - (mother[obj].Phi() + ROOT.TMath.Pi()) )
+                    upar = ev.MET * ROOT.TMath.Cos(phi_par)
+                    uperp = ev.MET * ROOT.TMath.Sin(phi_par)
+
+                    hists['MET_'+obj].Fill(ev.MET)
+                    hists['METPhi_'+obj].Fill(ev.Phi)
+                    hists['Upar_'+obj].Fill(upar)
+                    hists['Uperp_'+obj].Fill(uperp)
+                    
+                    profs['pt_MET_'+obj].Fill(mother[obj].Pt(), ev.MET)
+                    profs['pt_METPhi_'+obj].Fill(mother[obj].Pt(), ev.Phi)
+                    profs['pt_Upar_'+obj].Fill(mother[obj].Pt(), upar)
+                    profs['pt_Uperp_'+obj].Fill(mother[obj].Pt(), uperp)
+
+                    profs['eta_MET_'+obj].Fill(mother[obj].Eta(), ev.MET)
+                    profs['eta_METPhi_'+obj].Fill(mother[obj].Eta(), ev.Phi)
+                    profs['eta_Upar_'+obj].Fill(mother[obj].Eta(), upar)
+                    profs['eta_Uperp_'+obj].Fill(mother[obj].Eta(), uperp)
 
     outputF.cd()
     for h in hists.keys():
         hists[h].Write()
+    for p in profs.keys():
+        profs[p].Write()
 
     print("Processed %d events" % tot_nevents)
     print("On average %f muons" % (float(tot_muons) / tot_nevents))
+    print("On average %f muons" % (float(tot_electrons) / tot_nevents))
 
 if __name__ == "__main__":
     main()
