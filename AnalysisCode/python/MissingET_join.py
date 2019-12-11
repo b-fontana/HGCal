@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import os
 import ROOT
+from ROOT import Double
 import optparse
+import copy
 stats_file = 'stats.txt'
 
 def get_histograms(files, variables, obj):
@@ -92,24 +94,26 @@ def stack_histograms(h, name, legends):
         c.SaveAs('/eos/user/b/bfontana/www/PartialWafers/MissingET/'+name+str(ivar)+'.png')
         c.Close() #needed to avoid repeated name error
 
-def stack_graphs(g, name, legends, minimum, maximum):
+def stack_profiles(g, name, legends, minimum, maximum):
     colors = [ROOT.kBlue, ROOT.kRed, ROOT.kYellow, ROOT.kGreen]
     assert(len(g) == len(colors)+1)
-    if 'pt' in name:
+    if 'pt' in name and 'lepton' not in name:
         coords = [[0.73, 0.12, 0.12, 0.12],
                   [0.01, 0.12, 0.65, 0.65],
                   [0.89, 0.28, 0.28, 0.28],
                   [0.24, 0.35, 0.88, 0.88]]
-    elif 'eta' in name:
+    elif 'eta' in name and 'lepton' not in name:
         coords = [[0.73, 0.12, 0.12, 0.12],
                   [0.65, 0.12, 0.65, 0.65],
                   [0.89, 0.28, 0.28, 0.28],
-                  [0.88, 0.35, 0.88, 0.88]]         
+                  [0.88, 0.35, 0.88, 0.88]]
+    else:
+        coords = [[0.73, 0.12, 0.73, 0.73],
+                  [0.76, 0.12, 0.76, 0.76],
+                  [0.89, 0.28, 0.89, 0.89],
+                  [0.89, 0.35, 0.89, 0.89]]
     leg = [ROOT.TLegend(coords[0][i],coords[1][i],coords[2][i],coords[3][i]) for i in range(len(g[0]))]
 
-    for imask in range(0,len(g)):
-        print_stats([g[imask][0],g[imask][2],g[imask][3]],legends[imask])
-            
     for ivar in range(len(g[0])):
         c = ROOT.TCanvas('c'+str(ivar), 'c'+str(ivar), 1500, 1300)
         c.cd()
@@ -117,6 +121,8 @@ def stack_graphs(g, name, legends, minimum, maximum):
         pad.SetBottomMargin(0.);
         pad.Draw()
         pad.cd()
+        if 'lepton_eta' in name:
+            define_lepton_limits(g[0][ivar], ivar)
         g[0][ivar].Draw()
         leg[ivar].AddEntry(g[0][ivar],legends[0],"f");
         for imask in range(1,len(g)):
@@ -136,7 +142,7 @@ def stack_graphs(g, name, legends, minimum, maximum):
             g_clone[-1].SetLineColor(colors[imask-1])
             g_clone[-1].SetStats(ROOT.kFALSE)
             ax, ay = g_clone[-1].GetXaxis(), g_clone[-1].GetYaxis()
-            ay.SetRangeUser(0.5,1.5);
+            ay.SetRangeUser(0.75,1.25);
             ay.SetTitle("");
             ax.SetLabelSize(0.05);
             ax.SetTitleSize(0.05);
@@ -155,6 +161,78 @@ def stack_graphs(g, name, legends, minimum, maximum):
         redraw_border()
         c.SaveAs('/eos/user/b/bfontana/www/PartialWafers/MissingET/'+name+str(ivar)+'.png')
         c.Close() #needed to avoid repeated name error
+
+def stack_graphs(g, name, legends, minimum, maximum):
+    colors = [ROOT.kBlue, ROOT.kRed, ROOT.kYellow, ROOT.kGreen]
+    assert(len(g) == len(colors)+1)
+    coords = [[0.73, 0.73],
+              [0.76, 0.76],
+              [0.89, 0.89],
+              [0.89, 0.89]]
+    leg = [ROOT.TLegend(coords[0][i],coords[1][i],coords[2][i],coords[3][i]) for i in range(len(g[0]))]
+     
+    for ivar in range(len(g[0])):
+        c = ROOT.TCanvas('c'+str(ivar), 'c'+str(ivar), 1500, 1300)
+        c.cd()
+        pad = ROOT.TPad('pad'+str(ivar), 'pad'+str(ivar), 0., 0.36, 1., 1.);
+        pad.SetBottomMargin(0.);
+        pad.Draw()
+        pad.cd()
+        define_rms_limits(g[0][ivar], ivar)
+        g[0][ivar].Draw()
+        leg[ivar].AddEntry(g[0][ivar],legends[0],"f");
+        for imask in range(1,len(g)):
+            g[imask][ivar].SetLineColor(colors[imask-1])
+            g[imask][ivar].Draw('same')
+            g[imask][ivar].GetXaxis().SetLabelSize(0);
+            leg[ivar].AddEntry(g[imask][ivar],legends[imask],"f");
+        leg[ivar].Draw();
+        c.cd()
+        pad2 = ROOT.TPad('pad'+str(ivar)+'_low', 'pad'+str(ivar)+'_low', 0., 0.01, 1., 0.36);
+        pad2.Draw()
+        pad2.cd()
+        g_clone = [ROOT.TGraphErrors(g[0][ivar].GetN()) for _ in range(len(g))]
+        for imask in range(1,len(g)):
+            for ipoint in range(g[0][ivar].GetN()):
+                pointx, pointx0 = Double(0.), Double(0.)
+                pointy, pointy0 = Double(0.), Double(0.)
+                errorx, errorx0 = Double(0.), Double(0.)
+                errory, errory0 = Double(0.), Double(0.)
+                g[0][ivar].GetPoint(ipoint, pointx0, pointy0)
+                g[imask][ivar].GetPoint(ipoint, pointx, pointy)
+                assert(pointx == pointx0)
+                g_clone[imask-1].SetPoint(ipoint, pointx, pointy/pointy0)
+                errorx0 = g[0][ivar].GetErrorX(ipoint)
+                errory0 = g[0][ivar].GetErrorY(ipoint)
+                errorx = g[imask][ivar].GetErrorX(ipoint)
+                errory = g[imask][ivar].GetErrorY(ipoint)
+                assert(errorx == errorx0)
+                newerrory = (pointy/pointy0) * ROOT.TMath.Sqrt( (errory/pointy)**2 + (errory0/pointy0)**2 )
+                g_clone[imask-1].SetPointError(ipoint, errorx, newerrory)
+            g_clone[imask-1].SetMarkerSize(1.5)
+            g_clone[imask-1].SetMarkerColor(colors[imask-1])
+            g_clone[imask-1].SetLineColor(colors[imask-1])
+            g_clone[imask-1].SetMarkerStyle(8)
+            ax, ay = g_clone[imask-1].GetXaxis(), g_clone[imask-1].GetYaxis()
+            ay.SetRangeUser(0.94,1.06);
+            ay.SetTitle("");
+            ax.SetLabelSize(0.05);
+            ax.SetTitleSize(0.05);
+            ax.SetTitleOffset(0.95);
+            ay.SetLabelSize(0.06);
+            ay.SetNdivisions(-202);
+            g_options = 'p'
+            g_clone[imask-1].Draw('same '+g_options) if imask!=1 else g_clone[imask-1].Draw('a'+g_options)
+        l = ROOT.TLine()
+        l.SetLineStyle(9)
+        l.SetLineWidth(4)
+        l.SetLineColor(15) #grey
+        l.DrawLine(minimum, 1., maximum, 1.)
+        c.cd()
+        pad.cd()
+        redraw_border()
+        c.SaveAs('/eos/user/b/bfontana/www/PartialWafers/MissingET/'+name+str(ivar)+'.png')
+        c.Close() #needed to avoid repeated name error
         
 def redraw_border():
     ROOT.gPad.Update()
@@ -163,6 +241,26 @@ def redraw_border():
     l.DrawLine(ROOT.gPad.GetUxmin(), ROOT.gPad.GetUymax(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax())
     l2 = ROOT.TLine()
     l2.DrawLine(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax())
+
+def define_lepton_limits(graph, i):
+    if i==0:
+        graph.GetYaxis().SetRangeUser(5.6, 8.)
+    elif i==1:
+        graph.GetYaxis().SetRangeUser(5.6, 8.)
+    elif i==2:
+        graph.GetYaxis().SetRangeUser(-3.3, 3.3)
+    elif i==3:
+        graph.GetYaxis().SetRangeUser(-0.3, 0.3)
+    else:
+        raise ValueError('Wrong variable number.')
+
+def define_rms_limits(graph, i):
+    if i==0:
+        graph.GetYaxis().SetRangeUser(4.8, 6.35)
+    elif i==1:
+        graph.GetYaxis().SetRangeUser(4.4, 5.5)
+    else:
+        raise ValueError('Wrong variable number.')
 
 def main():
     ROOT.gStyle.SetOptStat(0);
@@ -190,14 +288,20 @@ def main():
     variables = ['MET', 'METPhi', 'Upar', 'Uperp']
     variables_pt = ['pt_MET', 'pt_METPhi', 'pt_Upar', 'pt_Uperp']
     variables_eta = ['eta_MET', 'eta_METPhi', 'eta_Upar', 'eta_Uperp']
+    variables_leptons = ['lepton_eta_MET', 'lepton_eta_METPhi', 'lepton_eta_Upar', 'lepton_eta_Uperp']
+    variables_rms = ['rms_Upar', 'rms_Uperp']
 
     for obj in objects:
         hists = get_histograms(files, variables, obj)
         stack_histograms(hists, obj+'_', legends)
-        graphs_pt = get_histograms(files, variables_pt, obj)
-        stack_graphs(graphs_pt, 'pt_'+obj+'_', legends, -2, 122)
-        graphs_eta = get_histograms(files, variables_eta, obj)
-        stack_graphs(graphs_eta, 'eta_'+obj+'_', legends, -4.5, 4.5)
+        profiles_pt = get_histograms(files, variables_pt, obj)
+        stack_profiles(profiles_pt, 'pt_'+obj+'_', legends, -2, 122)
+        profiles_eta = get_histograms(files, variables_eta, obj)
+        stack_profiles(profiles_eta, 'eta_'+obj+'_', legends, -4.5, 4.5)
+        profiles_leptons = get_histograms(files, variables_leptons, obj)
+        stack_profiles(profiles_leptons, 'lepton_eta_'+obj+'_', legends, 0.2, 2.8)
+        graphs_rms = get_histograms(files, variables_rms, obj)
+        stack_graphs(graphs_rms, 'rms_'+obj+'_', legends, 0.5, 3.6)
 
 if __name__ == "__main__":
     main()
