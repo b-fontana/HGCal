@@ -142,7 +142,7 @@ def stack_profiles(g, name, legends, minimum, maximum):
             g_clone[-1].SetLineColor(colors[imask-1])
             g_clone[-1].SetStats(ROOT.kFALSE)
             ax, ay = g_clone[-1].GetXaxis(), g_clone[-1].GetYaxis()
-            ay.SetRangeUser(0.75,1.25);
+            ay.SetRangeUser(0.94,1.06);
             ay.SetTitle("");
             ax.SetLabelSize(0.05);
             ax.SetTitleSize(0.05);
